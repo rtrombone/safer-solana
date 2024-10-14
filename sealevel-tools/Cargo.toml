@@ -1,0 +1,10 @@
+[package]
+name = "sealevel-tools"
+description = "Placeholder for real crate"
+
+edition = "2021"
+license = "MIT"
+rust-version = "1.75.0"
+version = "0.0.1"
+
+[dependencies]
