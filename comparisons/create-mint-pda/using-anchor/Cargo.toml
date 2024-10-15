@@ -1,0 +1,27 @@
+[package]
+name = "create-mint-pda-using-anchor"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "create_mint_pda_using_anchor"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+
+[dev-dependencies]
+create-mint-pda-common = { path = "../common" }
+solana-program-test.workspace = true
+solana-sdk.workspace = true

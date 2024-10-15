@@ -1,2 +1,7 @@
 #[cfg(feature = "borsh")]
-pub mod borsh;
+mod borsh;
+mod write;
+
+#[cfg(feature = "borsh")]
+pub use borsh::*;
+pub use write::*;

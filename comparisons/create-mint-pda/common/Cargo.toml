@@ -1,0 +1,15 @@
+[package]
+name = "create-mint-pda-common"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+anchor-lang.workspace = true
+create-mint-pda-using-anchor = { path = "../using-anchor", features = ["no-entrypoint"] }
+solana-banks-interface.workspace = true
+solana-program-test.workspace = true
+solana-sdk.workspace = true
+spl-token.workspace = true
+spl-token-2022.workspace = true

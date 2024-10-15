@@ -1,0 +1,21 @@
+[package]
+name = "create-pda-like-anchor"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+no-entrypoint = []
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+borsh.workspace = true
+sealevel-tools.workspace = true
+solana-program.workspace = true
+
+[dev-dependencies]
+create-pda-common = { path = "../common" }
+solana-program-test.workspace = true

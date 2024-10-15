@@ -2,19 +2,23 @@
 name = "sealevel-tools"
 description = "Placeholder for real crate"
 
-edition = "2021"
-license = "MIT"
-rust-version = "1.75.0"
-version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [features]
-default = ["borsh"]
+default = ["borsh", "token"]
 borsh = ["dep:borsh"]
+token = ["dep:spl-token-2022"]
 
 [dependencies]
-borsh = { optional = true, version = "1.5.1" }
-const-crypto = "0.3.0"
+borsh = { optional = true, workspace = true }
+const-crypto.workspace = true
+solana-program.workspace = true
+spl-token-2022 = { optional = true, workspace = true }
+thiserror.workspace = true
 
 [dev-dependencies]
-anchor-lang = "0.30.1"
-spl-discriminator = "0.3.0"
+anchor-lang.workspace = true
+spl-discriminator.workspace = true

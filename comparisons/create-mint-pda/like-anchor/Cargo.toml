@@ -1,0 +1,24 @@
+[package]
+name = "create-mint-pda-like-anchor"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+no-entrypoint = []
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+borsh.workspace = true
+sealevel-tools.workspace = true
+solana-program.workspace = true
+spl-token.workspace = true
+spl-token-2022.workspace = true
+
+[dev-dependencies]
+create-mint-pda-common = { path = "../common" }
+solana-program-test.workspace = true
+solana-sdk.workspace = true
