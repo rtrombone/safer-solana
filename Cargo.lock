@@ -1164,7 +1164,7 @@ dependencies = [
 
 [[package]]
 name = "create-mint-pda-common"
-version = "0.1.0-beta.2"
+version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "create-mint-pda-using-anchor",
@@ -1177,7 +1177,7 @@ dependencies = [
 
 [[package]]
 name = "create-mint-pda-like-anchor"
-version = "0.1.0-beta.2"
+version = "0.1.0"
 dependencies = [
  "borsh 1.5.1",
  "create-mint-pda-common",
@@ -1191,7 +1191,7 @@ dependencies = [
 
 [[package]]
 name = "create-mint-pda-using-anchor"
-version = "0.1.0-beta.2"
+version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -1202,7 +1202,7 @@ dependencies = [
 
 [[package]]
 name = "create-pda-common"
-version = "0.1.0-beta.2"
+version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "create-pda-using-anchor",
@@ -1213,7 +1213,7 @@ dependencies = [
 
 [[package]]
 name = "create-pda-like-anchor"
-version = "0.1.0-beta.2"
+version = "0.1.0"
 dependencies = [
  "borsh 1.5.1",
  "create-pda-common",
@@ -1224,7 +1224,7 @@ dependencies = [
 
 [[package]]
 name = "create-pda-using-anchor"
-version = "0.1.0-beta.2"
+version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "create-pda-common",
@@ -3535,7 +3535,7 @@ dependencies = [
 
 [[package]]
 name = "sealevel-tools"
-version = "0.1.0-beta.2"
+version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "borsh 1.5.1",

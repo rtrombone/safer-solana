@@ -4,8 +4,7 @@ description = "Tools for Solana program development"
 keywords = [
     "solana",
     "solana-program",
-    "spl",
-    "anchor-lang"
+    "spl"
 ]
 
 edition.workspace = true
