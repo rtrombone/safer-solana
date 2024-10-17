@@ -1,3 +1,5 @@
+//! Account serialization and deserialization utilities.
+
 #[cfg(feature = "borsh")]
 mod borsh;
 mod write;

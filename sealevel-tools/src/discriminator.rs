@@ -1,3 +1,5 @@
+//! Discriminator generation for program accounts, events, and instructions.
+
 /// Discriminator generated either by user-defined or by specific hashing function (where total hash
 /// output is 256 bits). These discriminators can be used for discriminating against serialized
 /// program accounts, serialized events, and instructions (as selectors for specific program

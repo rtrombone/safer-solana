@@ -1,6 +1,12 @@
 [package]
 name = "sealevel-tools"
 description = "Tools for Solana program development"
+keywords = [
+    "solana",
+    "solana-program",
+    "spl",
+    "anchor-lang"
+]
 
 edition.workspace = true
 license.workspace = true

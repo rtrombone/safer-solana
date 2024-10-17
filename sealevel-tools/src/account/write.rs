@@ -4,14 +4,18 @@ use solana_program::program_memory::sol_memcpy;
 
 use crate::account_info::DataAccount;
 
-/// Inspired by https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/bpf_writer.rs and
-/// https://doc.rust-lang.org/src/std/io/impls.rs.html#369-406.
+/// Struct that implements [Write] for use with writable [DataAccount].
+///
+/// Inspired by <https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/bpf_writer.rs>.
 pub struct AccountWriter<'a, 'b, 'c> {
     account: &'c DataAccount<'a, 'b, true>,
     position: usize,
 }
 
 impl<'a, 'b, 'c> AccountWriter<'a, 'b, 'c> {
+    /// Instantiate a new writer using a reference to writable [DataAccount].
+    ///
+    /// Position defaults to zero.
     pub fn new(account: &'c DataAccount<'a, 'b, true>) -> Self {
         Self {
             account,

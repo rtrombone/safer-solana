@@ -1,3 +1,5 @@
+//! [AccountInfo] utilities.
+
 mod process;
 
 pub use process::*;
@@ -6,21 +8,77 @@ use solana_program::{account_info::AccountInfo, msg, program_error::ProgramError
 
 use crate::error::SealevelToolsError;
 
+/// Optional arguments for [try_next_enumerated_account], which specify constraints for the next
+/// [AccountInfo].
 #[derive(Debug, Default)]
 pub struct NextEnumeratedAccountOptions<'a, 'b> {
+    /// If provided, the next account's key must equal this pubkey.
     pub key: Option<&'a Pubkey>,
-    pub any_of_keys: Option<&'a [&'b Pubkey]>,
+
+    /// If provided, the next account's key must be one of these pubkeys.
+    pub any_of_keys: Option<&'b [&'a Pubkey]>,
+
+    /// If provided, the next account's owner must equal this pubkey.
     pub owner: Option<&'a Pubkey>,
-    pub any_of_owners: Option<&'a [&'b Pubkey]>,
+
+    /// If provided, the next account's owner must be one of these pubkeys.
+    pub any_of_owners: Option<&'b [&'a Pubkey]>,
+
+    /// If provided, the next account's key must be derived from these seeds and owner.
     pub seeds: Option<(
-        &'a [&'b [u8]], // seeds
-        &'a Pubkey,     // owner
+        &'b [&'a [u8]], // seeds
+        &'b Pubkey,     // owner
     )>,
+
+    /// If provided, the next account's `is_signer` must equal this value.
     pub is_signer: Option<bool>,
+
+    /// If provided, the next account's `is_writable` must equal this value.
     pub is_writable: Option<bool>,
+
+    /// If provided, the next account's `executable` must equal this value.
     pub executable: Option<bool>,
 }
 
+/// Similar to [next_account_info](solana_program::account_info::next_account_info), but using an
+/// enumerated iterator and optional constraints.
+///
+/// If any of the constraints are violated, a custom program error code with
+/// [SealevelToolsError::ACCOUNT_INFO_NEXT_ENUMERATED_ACCOUNT] is returned, as well as a program
+/// log indicating the specific constraint that was violated.
+///
+/// # Example
+///
+/// ```
+/// use sealevel_tools::account_info::{try_next_enumerated_account, NextEnumeratedAccountOptions};
+/// use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+///
+/// fn process_instruction(
+///      program_id: &Pubkey,
+///      accounts: &[AccountInfo],
+///      instruction_data: &[u8],
+/// ) -> ProgramResult {
+///     let mut accounts_iter = accounts.iter().enumerate();
+///
+///     // Next account must be the clock sysvar.
+///     let (index, account) = try_next_enumerated_account(
+///         &mut accounts_iter,
+///         NextEnumeratedAccountOptions {
+///             key: Some(&solana_program::sysvar::clock::ID),
+///             ..Default::default()
+///         })?;
+///
+///     // Next account must be writable.
+///     let (index, account) = try_next_enumerated_account(
+///         &mut accounts_iter,
+///         NextEnumeratedAccountOptions {
+///             is_writable: Some(true),
+///             ..Default::default()
+///         })?;
+///
+///     Ok(())
+/// }
+/// ```
 pub fn try_next_enumerated_account<'a, 'b, 'c, I>(
     iter: &mut I,
     NextEnumeratedAccountOptions {
@@ -136,6 +194,45 @@ where
     Ok((index, account))
 }
 
+/// Like [try_next_enumerated_account], but processes the account as a specific type implementing
+/// [ProcessNextEnumeratedAccount].
+///
+/// ### Example
+///
+/// ```
+/// use sealevel_tools::account_info::{
+///     try_next_enumerated_account_as, NextEnumeratedAccountOptions, DataAccount, Program, Signer,
+/// };
+/// use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+///
+/// fn process_instruction(
+///      program_id: &Pubkey,
+///      accounts: &[AccountInfo],
+///      instruction_data: &[u8],
+/// ) -> ProgramResult {
+///     let mut accounts_iter = accounts.iter().enumerate();
+///
+///     // Next account must writable signer (A.K.A. our payer).
+///     let (index, payer) =
+///         try_next_enumerated_account_as::<Signer<true>>(&mut accounts_iter, Default::default())?;
+///
+///     // Next account must be read-only data account.
+///     let (index, readonly_account) = try_next_enumerated_account_as::<DataAccount<false>>(
+///         &mut accounts_iter,
+///         Default::default()
+///     )?;
+///
+///     // Next account must be System program.
+///     let (index, system_program) = try_next_enumerated_account_as::<Program>(
+///         &mut accounts_iter,
+///         NextEnumeratedAccountOptions {
+///             key: Some(&solana_program::system_program::ID),
+///             ..Default::default()
+///         })?;
+///
+///     Ok(())
+/// }
+/// ```
 pub fn try_next_enumerated_account_as<'a, 'b, 'c, T>(
     iter: &mut impl Iterator<Item = (usize, &'c AccountInfo<'a>)>,
     NextEnumeratedAccountOptions {

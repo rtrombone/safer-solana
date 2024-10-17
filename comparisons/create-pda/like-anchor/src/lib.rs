@@ -5,7 +5,7 @@ use sealevel_tools::{
     account_info::{
         try_next_enumerated_account_as, DataAccount, NextEnumeratedAccountOptions, Signer,
     },
-    cpi::system_program::create_account::{try_create_borsh_data_account, CreateAccount},
+    cpi::system_program::{try_create_borsh_data_account, CreateAccount},
     discriminator::Discriminator,
 };
 use solana_program::{

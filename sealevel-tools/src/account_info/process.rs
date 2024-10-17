@@ -8,20 +8,31 @@ use solana_program::{
 
 use super::NextEnumeratedAccountOptions;
 
+/// Trait for processing the next enumerated [AccountInfo] with default options. These options can
+/// be overridden in the [try_next_enumerated_account_as](super::try_next_enumerated_account_as)
+/// method (like checking for a specific key or owner).
 pub trait ProcessNextEnumeratedAccount<'a, 'b>: Sized {
+    /// Default options for processing the next enumerated account.
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static>;
 
+    /// Only return `Some(Self)` if the account meets the criteria specified by the struct
+    /// implementing this trait.
     fn checked_new(account: &'b AccountInfo<'a>) -> Option<Self>;
 }
 
+/// Generic wrapper for a data account that can be read from or written to (specified by `WRITE`
+/// const parameter).
 pub struct DataAccount<'a, 'b, const WRITE: bool>(pub(crate) &'b AccountInfo<'a>);
 
 impl<'a, 'b, const WRITE: bool> DataAccount<'a, 'b, WRITE> {
+    /// Read data serialized with the [Pack] trait from the account.
     pub fn try_read_pack_data<T: Pack + IsInitialized>(&self) -> Result<T, ProgramError> {
         let data = self.0.try_borrow_data()?;
         T::unpack(&data)
     }
 
+    /// Read data serialized with the [BorshDeserialize](borsh::BorshDeserialize) trait from the
+    /// account.
     #[cfg(feature = "borsh")]
     pub fn try_read_borsh_data<const N: usize, T: borsh::BorshDeserialize>(
         &self,
@@ -65,6 +76,7 @@ impl<'a, 'b, const WRITE: bool> Deref for DataAccount<'a, 'b, WRITE> {
     }
 }
 
+/// Generic wrapper for a program account.
 pub struct Program<'a, 'b>(pub(crate) &'b AccountInfo<'a>);
 
 impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for Program<'a, 'b> {
@@ -96,6 +108,9 @@ impl<'a, 'b> Deref for Program<'a, 'b> {
         self.0
     }
 }
+
+/// Generic wrapper for a signer account that can be read from or written to (specified by `WRITE`
+/// const parameter).
 pub struct Signer<'a, 'b, const WRITE: bool>(pub(crate) &'b AccountInfo<'a>);
 
 impl<'a, 'b, const WRITE: bool> ProcessNextEnumeratedAccount<'a, 'b> for Signer<'a, 'b, WRITE> {

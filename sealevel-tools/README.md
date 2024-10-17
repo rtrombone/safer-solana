@@ -18,7 +18,7 @@ hash representing the name of a given instruction should be used to determine ho
 should be processed in your program.
 
 For example, `anchor-lang` typically uses the input "global:your_instruction_name" to generate the
-Sha256 hash. This can be achieved using the [Discriminator](src/discriminator/mod.rs) enum:
+Sha256 hash. This can be achieved using `Discriminator` found in these tools:
 
 ```rs
 const YOUR_INSTRUCTION_SELECTOR: [u8; 8] =
