@@ -4,7 +4,7 @@ use solana_program_test::{processor, tokio, ProgramTest};
 #[tokio::test]
 async fn test_init_thing() {
     let tx_meta = create_pda_common::init_thing_for_test(set_up().await).await;
-    assert_eq!(tx_meta.compute_units_consumed, 5_868);
+    assert_eq!(tx_meta.compute_units_consumed, 5_853);
 }
 
 #[tokio::test]
@@ -13,7 +13,7 @@ async fn test_init_thing_already_having_lamports() {
         create_pda_common::init_thing_already_having_lamports_for_test(set_up().await).await;
 
     // This includes lamports transfer.
-    assert_eq!(tx_meta.compute_units_consumed, 9_251);
+    assert_eq!(tx_meta.compute_units_consumed, 9_236);
 }
 
 async fn set_up() -> InitThingTest {

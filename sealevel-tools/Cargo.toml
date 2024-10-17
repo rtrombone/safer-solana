@@ -1,21 +1,27 @@
 [package]
 name = "sealevel-tools"
-description = "Placeholder for real crate"
+description = "Tools for Solana program development"
 
 edition.workspace = true
 license.workspace = true
+readme = "README.md"
+repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
 [features]
-default = ["borsh", "token"]
+default = ["borsh"]
 borsh = ["dep:borsh"]
-token = ["dep:spl-token-2022"]
+token = [
+    "dep:spl-token",
+    "dep:spl-token-2022"
+]
 
 [dependencies]
 borsh = { optional = true, workspace = true }
 const-crypto.workspace = true
 solana-program.workspace = true
+spl-token = { optional = true, workspace = true }
 spl-token-2022 = { optional = true, workspace = true }
 thiserror.workspace = true
 

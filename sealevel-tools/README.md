@@ -5,6 +5,8 @@ set of tools that should help a developer do whatever he wants to do in a Solana
 prescribing any specific way of doing so. By using these tools, a developer can write a lightweight
 program with functionality found in other frameworks.
 
+Currently pinning Solana version to 1.18. Looking to support Solana 2.0 in the future.
+
 ## Examples
 
 Here are some ways of using these tools to write your first program.

@@ -17,7 +17,7 @@ async fn test_init_mint_token_program() {
         .await,
     )
     .await;
-    assert_eq!(tx_meta.compute_units_consumed, 10_904);
+    assert_eq!(tx_meta.compute_units_consumed, 10_889);
 }
 
 #[tokio::test]
@@ -35,7 +35,7 @@ async fn test_init_mint_token_2022_program() {
         .await,
     )
     .await;
-    assert_eq!(tx_meta.compute_units_consumed, 11_261);
+    assert_eq!(tx_meta.compute_units_consumed, 11_246);
 }
 
 #[tokio::test]
@@ -54,7 +54,7 @@ async fn test_init_mint_token_program_and_freeze_authority() {
         .await,
     )
     .await;
-    assert_eq!(tx_meta.compute_units_consumed, 11_210);
+    assert_eq!(tx_meta.compute_units_consumed, 11_195);
 }
 
 #[tokio::test]
@@ -73,7 +73,7 @@ async fn test_init_mint_token_2022_program_and_freeze_authority() {
         .await,
     )
     .await;
-    assert_eq!(tx_meta.compute_units_consumed, 11_553);
+    assert_eq!(tx_meta.compute_units_consumed, 11_538);
 }
 
 async fn set_up(
