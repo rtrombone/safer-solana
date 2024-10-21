@@ -17,7 +17,8 @@ async fn test_init_mint_token_program() {
         .await,
     )
     .await;
-    assert_eq!(tx_meta.compute_units_consumed, 10_889);
+    assert!(did_not_fail(&tx_meta.log_messages));
+    assert_eq!(tx_meta.compute_units_consumed, 10_906);
 }
 
 #[tokio::test]
@@ -35,7 +36,8 @@ async fn test_init_mint_token_2022_program() {
         .await,
     )
     .await;
-    assert_eq!(tx_meta.compute_units_consumed, 11_246);
+    assert!(did_not_fail(&tx_meta.log_messages));
+    assert_eq!(tx_meta.compute_units_consumed, 11_270);
 }
 
 #[tokio::test]
@@ -54,7 +56,8 @@ async fn test_init_mint_token_program_and_freeze_authority() {
         .await,
     )
     .await;
-    assert_eq!(tx_meta.compute_units_consumed, 11_195);
+    assert!(did_not_fail(&tx_meta.log_messages));
+    assert_eq!(tx_meta.compute_units_consumed, 11_212);
 }
 
 #[tokio::test]
@@ -73,7 +76,8 @@ async fn test_init_mint_token_2022_program_and_freeze_authority() {
         .await,
     )
     .await;
-    assert_eq!(tx_meta.compute_units_consumed, 11_538);
+    assert!(did_not_fail(&tx_meta.log_messages));
+    assert_eq!(tx_meta.compute_units_consumed, 11_562);
 }
 
 async fn set_up(
@@ -100,4 +104,18 @@ async fn set_up(
         mint_authority,
         freeze_authority,
     }
+}
+
+fn did_not_fail(log_messages: &Vec<String>) -> bool {
+    log_messages
+        .iter()
+        .filter(|line| {
+            line.contains(&format!(
+                "Program {} failed",
+                create_mint_pda_like_anchor::ID
+            ))
+        })
+        .peekable()
+        .peek()
+        .is_none()
 }

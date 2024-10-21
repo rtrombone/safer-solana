@@ -17,6 +17,7 @@ async fn test_init_mint_token_program() {
         .await,
     )
     .await;
+    assert!(did_not_fail(&tx_meta.log_messages));
     assert_eq!(tx_meta.compute_units_consumed, 14_824);
 }
 
@@ -35,6 +36,7 @@ async fn test_init_mint_token_2022_program() {
         .await,
     )
     .await;
+    assert!(did_not_fail(&tx_meta.log_messages));
     assert_eq!(tx_meta.compute_units_consumed, 15_170);
 }
 
@@ -54,6 +56,7 @@ async fn test_init_mint_token_program_and_freeze_authority() {
         .await,
     )
     .await;
+    assert!(did_not_fail(&tx_meta.log_messages));
     assert_eq!(tx_meta.compute_units_consumed, 15_439);
 }
 
@@ -73,6 +76,7 @@ async fn test_init_mint_token_2022_program_and_freeze_authority() {
         .await,
     )
     .await;
+    assert!(did_not_fail(&tx_meta.log_messages));
     assert_eq!(tx_meta.compute_units_consumed, 15_785);
 }
 
@@ -118,4 +122,18 @@ macro_rules! anchor_processor {
 
         solana_program_test::processor!(entry)
     }};
+}
+
+fn did_not_fail(log_messages: &Vec<String>) -> bool {
+    log_messages
+        .iter()
+        .filter(|line| {
+            line.contains(&format!(
+                "Program {} failed",
+                create_mint_pda_using_anchor::ID
+            ))
+        })
+        .peekable()
+        .peek()
+        .is_none()
 }

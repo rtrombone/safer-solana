@@ -10,11 +10,12 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/rtrombone/safer-solana"
 rust-version = "1.75.0"
-version = "0.1.0"
+version = "0.2.0-beta.1"
 
 [workspace.dependencies]
 anchor-lang = "0.30.1"
 anchor-spl = "0.30.1"
+bincode = "1.3.3"
 borsh = "1.5.1"
 const-crypto = "0.3"
 sealevel-tools = { path = "sealevel-tools" }

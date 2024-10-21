@@ -1,9 +1,8 @@
-use std::ops::Deref;
-
 use borsh::BorshDeserialize;
 use sealevel_tools::{
     account_info::{
-        try_next_enumerated_account_as, DataAccount, NextEnumeratedAccountOptions, Program, Signer,
+        try_next_enumerated_account, AnyTokenProgram, DataAccount, NextEnumeratedAccountOptions,
+        Signer,
     },
     cpi::token_program::{try_create_mint, CreateMint},
     discriminator::Discriminator,
@@ -49,24 +48,18 @@ pub fn process_instruction(
     let mut accounts_iter = accounts.iter().enumerate();
 
     // First account will be paying the rent.
-    let from_pubkey =
-        try_next_enumerated_account_as::<Signer<true>>(&mut accounts_iter, Default::default())
-            .map(|(_, signer)| signer.key)?;
+    let (_, payer) =
+        try_next_enumerated_account::<Signer<true>>(&mut accounts_iter, Default::default())?;
 
     let (new_mint_addr, new_mint_bump) = Pubkey::find_program_address(&[b"mint"], program_id);
 
     // Second account is which token program to use.
-    let token_program_id = try_next_enumerated_account_as::<Program>(
-        &mut accounts_iter,
-        NextEnumeratedAccountOptions {
-            any_of_keys: Some(&[&spl_token::ID, &spl_token_2022::ID]),
-            ..Default::default()
-        },
-    )
-    .map(|(_, token_program)| token_program.key)?;
+    let token_program_id =
+        try_next_enumerated_account::<AnyTokenProgram>(&mut accounts_iter, Default::default())
+            .map(|(_, token_program)| token_program.key)?;
 
     // Third account is the new mint.
-    let (_, new_mint_info) = try_next_enumerated_account_as::<DataAccount<true>>(
+    let (_, new_mint_account) = try_next_enumerated_account::<DataAccount<true>>(
         &mut accounts_iter,
         NextEnumeratedAccountOptions {
             key: Some(&new_mint_addr),
@@ -75,15 +68,13 @@ pub fn process_instruction(
     )?;
 
     try_create_mint(CreateMint {
-        from_pubkey,
         token_program_id,
-        mint: new_mint_info.deref().into(),
+        payer: payer.as_input_authority(),
+        mint: new_mint_account.as_input_authority(Some(&[b"mint", &[new_mint_bump]])),
         mint_authority_pubkey: &mint_authority,
         freeze_authority_pubkey: freeze_authority.as_ref(),
         decimals,
         account_infos: accounts,
-        from_signer_seeds: None,
-        to_signer_seeds: Some(&[b"mint", &[new_mint_bump]]),
     })?;
 
     Ok(())

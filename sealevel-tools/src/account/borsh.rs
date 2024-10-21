@@ -14,7 +14,9 @@ pub fn try_read_borsh_data<const N: usize, T: BorshDeserialize>(
 ) -> Result<T> {
     match discriminator {
         None => T::deserialize_reader(reader),
-        Some(discriminator) if &<[u8; N]>::deserialize_reader(reader)? == discriminator => {
+        Some(discriminator)
+            if N == 0 || &<[u8; N]>::deserialize_reader(reader)? == discriminator =>
+        {
             T::deserialize_reader(reader)
         }
         _ => Err(Error::new(ErrorKind::InvalidData, "Invalid discriminator")),

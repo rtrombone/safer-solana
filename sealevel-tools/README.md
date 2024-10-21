@@ -187,9 +187,8 @@ Without a struct, you may iterate like so:
     let mut accounts_iter = accounts.iter().enumerate();
 
     // First account will be paying the rent.
-    let from_pubkey =
-        try_next_enumerated_account_as::<Signer<true>>(&mut accounts_iter, Default::default())
-            .map(|(_, signer)| signer.key)?;
+    let (_, payer) =
+        try_next_enumerated_account::<Signer<true>>(&mut accounts_iter, Default::default())?;
 
     let (new_thing_addr, new_thing_bump) = Pubkey::find_program_address(&[b"thing"], program_id);
 

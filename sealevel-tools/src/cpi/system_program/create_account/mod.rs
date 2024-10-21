@@ -16,37 +16,25 @@ use solana_program::{
     sysvar::Sysvar,
 };
 
-use crate::{account_info::DataAccount, error::SealevelToolsError};
-
-/// When specified in [CreateAccount], either find the account by its key in the [AccountInfo]
-/// slice (can be expensive) or use the provided [AccountInfo].
-pub enum ToAccount<'a, 'b> {
-    /// Use this key to find the [AccountInfo] as account to be created.
-    Key(&'b Pubkey),
-
-    /// Use this [AccountInfo] as the account to be created.
-    Info(&'b AccountInfo<'a>),
-}
-
-impl<'a, 'b> From<&'b Pubkey> for ToAccount<'a, 'b> {
-    fn from(pubkey: &'b Pubkey) -> Self {
-        ToAccount::Key(pubkey)
-    }
-}
-
-impl<'a, 'b> From<&'b AccountInfo<'a>> for ToAccount<'a, 'b> {
-    fn from(info: &'b AccountInfo<'a>) -> Self {
-        ToAccount::Info(info)
-    }
-}
+use crate::{
+    account_info::DataAccount,
+    error::SealevelToolsError,
+    types::{InputAccount, InputAuthority},
+};
 
 /// Arguments for [try_create_account].
 pub struct CreateAccount<'a, 'b, 'c> {
     /// The account that will pay for the rent.
-    pub from_pubkey: &'c Pubkey,
+    ///
+    /// NOTE: Seeds for the [Self::payer] signer if the payer is a System account managed by the
+    /// program. Pass in [None] if the payer is passed in as a signer.
+    pub payer: InputAuthority<'a, 'b, 'c>,
 
     /// The account to be created.
-    pub to: ToAccount<'a, 'c>,
+    ///
+    /// NOTE: Seeds for the [Self::to] signer if the account is a PDA. Pass in [None] if the account
+    /// is passed in as a random keypair.
+    pub to: InputAuthority<'a, 'b, 'c>,
 
     /// The space to allocate for the account.
     pub space: u64,
@@ -56,14 +44,6 @@ pub struct CreateAccount<'a, 'b, 'c> {
 
     /// The [AccountInfo] slice provided by the entrypoint.
     pub account_infos: &'c [AccountInfo<'a>],
-
-    /// Seeds for the [Self::from_pubkey] signer if the payer is a System account managed by the
-    /// program. Pass in [None] if the payer is passed in as a signer.
-    pub from_signer_seeds: Option<&'c [&'b [u8]]>,
-
-    /// Seeds for the [Self::to] signer if the account is a PDA. Pass in [None] if the account is
-    /// passed in as a random keypair.
-    pub to_signer_seeds: Option<&'c [&'b [u8]]>,
 }
 
 /// Create a new account. If the account already has lamports, it will be topped up to the required
@@ -76,7 +56,7 @@ pub struct CreateAccount<'a, 'b, 'c> {
 ///
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account_as, NextEnumeratedAccountOptions, DataAccount, Program,
+///         try_next_enumerated_account, NextEnumeratedAccountOptions, DataAccount, Program,
 ///         Signer,
 ///     },
 ///     cpi::system_program::{try_create_account, CreateAccount},
@@ -92,26 +72,27 @@ pub struct CreateAccount<'a, 'b, 'c> {
 ///
 ///     // Next account must writable signer (A.K.A. our payer).
 ///     let (_, payer) =
-///         try_next_enumerated_account_as::<Signer<true>>(&mut accounts_iter, Default::default())?;
+///         try_next_enumerated_account::<Signer<true>>(&mut accounts_iter, Default::default())?;
 ///
 ///     let (new_thing_addr, new_thing_bump) =
 ///         Pubkey::find_program_address(&[b"thing"], program_id);
 ///
 ///     // Next account must be writable data account matching PDA address.
-///     let (_, new_account) = try_next_enumerated_account_as::<DataAccount<true>>(
+///     let (_, new_account) = try_next_enumerated_account::<DataAccount<true>>(
 ///         &mut accounts_iter,
-///         Default::default()
+///         NextEnumeratedAccountOptions {
+///             key: Some(&new_thing_addr),
+///             ..Default::default()
+///         },
 ///     )?;
 ///
 ///     try_create_account(
 ///         CreateAccount {
-///             from_pubkey: payer.key,
-///             to: new_account.deref().into(),
+///             payer: payer.as_input_authority(),
+///             to: new_account.as_input_authority(Some(&[b"thing", &[new_thing_bump]])),
 ///             space: 16,
 ///             program_id,
 ///             account_infos: accounts,
-///             from_signer_seeds: None,
-///             to_signer_seeds: Some(&[b"thing", &[new_thing_bump]]),
 ///         })?;
 ///
 ///     Ok(())
@@ -119,18 +100,26 @@ pub struct CreateAccount<'a, 'b, 'c> {
 /// ```
 pub fn try_create_account<'a, 'c>(
     CreateAccount {
-        from_pubkey,
-        to,
+        payer:
+            InputAuthority {
+                account: payer,
+                signer_seeds: from_signer_seeds,
+            },
+        to:
+            InputAuthority {
+                account: to,
+                signer_seeds: to_signer_seeds,
+            },
         account_infos,
         space,
         program_id,
-        from_signer_seeds,
-        to_signer_seeds,
     }: CreateAccount<'a, '_, 'c>,
 ) -> Result<DataAccount<'a, 'c, true>, ProgramError> {
+    let from_pubkey = payer.key();
+
     let rent_required = Rent::get().map(|rent| rent.minimum_balance(space as usize))?;
     let to_info = match to {
-        ToAccount::Key(to_pubkey) => account_infos
+        InputAccount::Key(to_pubkey) => account_infos
             .iter()
             .find(|info| info.key == to_pubkey)
             .ok_or_else(|| {
@@ -138,7 +127,7 @@ pub fn try_create_account<'a, 'c>(
                     "Cannot find {to_pubkey}"
                 ))
             })?,
-        ToAccount::Info(to_info) => to_info,
+        InputAccount::Info(to_info) => to_info,
     };
 
     let current_lamports = to_info.lamports();

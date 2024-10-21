@@ -4,6 +4,7 @@ use solana_program_test::{tokio, ProgramTest};
 #[tokio::test]
 async fn test_init_thing() {
     let tx_meta = create_pda_common::init_thing_for_test(set_up().await).await;
+    assert!(did_not_fail(&tx_meta.log_messages));
     assert_eq!(tx_meta.compute_units_consumed, 11_442);
 }
 
@@ -11,6 +12,7 @@ async fn test_init_thing() {
 async fn test_init_thing_already_having_lamports() {
     let tx_meta =
         create_pda_common::init_thing_already_having_lamports_for_test(set_up().await).await;
+    assert!(did_not_fail(&tx_meta.log_messages));
 
     // This includes lamports transfer.
     assert_eq!(tx_meta.compute_units_consumed, 15_516);
@@ -49,4 +51,13 @@ macro_rules! anchor_processor {
 
         solana_program_test::processor!(entry)
     }};
+}
+
+fn did_not_fail(log_messages: &Vec<String>) -> bool {
+    log_messages
+        .iter()
+        .filter(|line| line.contains(&format!("Program {} failed", create_pda_using_anchor::ID)))
+        .peekable()
+        .peek()
+        .is_none()
 }

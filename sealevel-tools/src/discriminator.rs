@@ -54,6 +54,14 @@ impl<'a, const N: usize> Discriminator<'a, N> {
     }
 }
 
+pub trait Discriminate<const N: usize> {
+    const DISCRIMINATOR: [u8; N];
+}
+
+impl<const N: usize, T: Discriminate<N>> Discriminate<N> for Box<T> {
+    const DISCRIMINATOR: [u8; N] = T::DISCRIMINATOR;
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
