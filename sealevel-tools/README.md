@@ -62,35 +62,6 @@ impl ProgramInstruction {
     pub const ADD_THING: [u8; 4] = Discriminator::Sha2(b"add_thing").to_bytes();
     pub const REMOVE_THING: [u8; 4] = Discriminator::Sha2(b"remove_thing").to_bytes();
     pub const DO_SOMETHING_ELSE: [u8; 4] = Discriminator::Sha2(b"do_something_else").to_bytes();
-
-    pub fn process(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        instruction_data: &[u8],
-    ) -> ProgramResult {
-        if program_id != &ID {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        match BorshDeserialize::try_from_slice(instruction_data)
-            .map_err(|_| ProgramError::InvalidInstructionData)?
-        {
-            Self::DoSomething(data) => {
-                msg!("DoSomething: {}", data);
-            }
-            Self::AddThing(_) => {
-                msg!("AddThing");
-            }
-            Self::RemoveThing => {
-                msg!("RemoveThing");
-            }
-            Self::DoSomethingElse { a, b } => {
-                msg!("DoSomethingElse: a={}, b={:?}", a, b);
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl BorshDeserialize for ProgramInstruction {
@@ -135,6 +106,37 @@ impl BorshSerialize for ProgramInstruction {
         }
     }
 }
+
+pub fn process_instruction(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    if program_id != &ID {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
+    match BorshDeserialize::try_from_slice(instruction_data)
+        .map_err(|_| ProgramError::InvalidInstructionData)?
+    {
+        Self::DoSomething(data) => {
+            msg!("DoSomething: {}", data);
+        }
+        Self::AddThing(_) => {
+            msg!("AddThing");
+        }
+        Self::RemoveThing => {
+            msg!("RemoveThing");
+        }
+        Self::DoSomethingElse { a, b } => {
+            msg!("DoSomethingElse: a={}, b={:?}", a, b);
+        }
+    }
+
+    Ok(())
+}
+
+solana_program::entrypoint!(process_instruction);
 ```
 
 Instead of just logging using `msg!`, you would use a processor method relevant for each instruction

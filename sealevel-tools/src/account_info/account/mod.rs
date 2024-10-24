@@ -23,11 +23,11 @@ use solana_program::{
 
 use crate::{error::SealevelToolsError, types::InputAuthority};
 
-use super::{close_account, NextEnumeratedAccountOptions};
+use super::{close_account, try_next_enumerated_account_info, NextEnumeratedAccountOptions};
 
 /// Trait for processing the next enumerated [AccountInfo] with default options. These options can
-/// be overridden in the [try_next_enumerated_account_as](super::try_next_enumerated_account_as)
-/// method (like checking for a specific key or owner).
+/// be overridden in the [try_next_enumerated_account] method (like checking for a specific key or
+/// owner).
 pub trait ProcessNextEnumeratedAccount<'a, 'b>: Sized {
     /// Default options for processing the next enumerated account.
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static>;
@@ -49,7 +49,7 @@ impl<'a, 'b, const WRITE: bool> DataAccount<'a, 'b, WRITE> {
         T::unpack(&data)
     }
 
-    /// Read data serialized with the [BorshDeserialize](borsh::BorshDeserialize) trait from the
+    /// Read data serialized with the [BorshDeserialize](::borsh::BorshDeserialize) trait from the
     /// account.
     #[cfg(feature = "borsh")]
     pub fn try_read_borsh_data<const N: usize, T: ::borsh::BorshDeserialize>(
@@ -250,7 +250,7 @@ where
     'a: 'c,
     T: ProcessNextEnumeratedAccount<'a, 'c>,
 {
-    let (index, account) = super::try_next_enumerated_account_info(
+    let (index, account) = try_next_enumerated_account_info(
         iter,
         NextEnumeratedAccountOptions {
             key: key.or(T::NEXT_ACCOUNT_OPTIONS.key),

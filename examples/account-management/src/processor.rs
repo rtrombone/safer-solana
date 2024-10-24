@@ -1,4 +1,5 @@
 use sealevel_tools::{
+    account::BorshAccountSerde,
     account_info::{
         try_next_enumerated_account, BorshDataAccount, DataAccount, NextEnumeratedAccountOptions,
         Signer,
@@ -27,15 +28,17 @@ pub fn init_thing(accounts: &[AccountInfo], value: u64) -> ProgramResult {
         },
     )?;
 
+    let thing = Thing { value };
+
     try_create_borsh_data_account(
         CreateAccount {
             payer: payer.as_input_authority(),
             to: new_thing_account.as_input_authority(Some(&[b"thing", &[new_thing_bump]])),
-            space: 16,
+            space: thing.try_account_space()?,
             program_id: &ID,
             account_infos: accounts,
         },
-        &Thing { value },
+        &thing,
     )?;
 
     Ok(())

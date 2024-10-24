@@ -1,5 +1,5 @@
 use example_account_management::{instruction::ProgramInstruction, state::Thing};
-use sealevel_tools::account::BorshAccountDeserialize;
+use sealevel_tools::account::BorshAccountSerde;
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_program_test::{processor, tokio, ProgramTest};
 use solana_sdk::{
@@ -41,7 +41,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 5_916);
+    assert_eq!(tx_meta.compute_units_consumed, 5_915);
 
     // Check the new_thing account.
     let account_data = banks_client
@@ -50,8 +50,11 @@ async fn test_thing() {
         .unwrap()
         .unwrap()
         .data;
-    assert_eq!(account_data.len(), 16);
     let thing_data = Thing::try_deserialize_data(&mut &account_data[..]).unwrap();
+    assert_eq!(
+        account_data.len(),
+        thing_data.try_account_space().unwrap() as usize
+    );
     assert_eq!(thing_data, Thing { value });
 
     // Update.
@@ -74,7 +77,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 809);
+    assert_eq!(tx_meta.compute_units_consumed, 808);
 
     // Check the thing account.
     let account_data = banks_client
@@ -83,8 +86,11 @@ async fn test_thing() {
         .unwrap()
         .unwrap()
         .data;
-    assert_eq!(account_data.len(), 16);
     let thing_data = Thing::try_deserialize_data(&mut &account_data[..]).unwrap();
+    assert_eq!(
+        account_data.len(),
+        thing_data.try_account_space().unwrap() as usize
+    );
     assert_eq!(thing_data, Thing { value: new_value });
 
     // Close.
@@ -113,7 +119,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 1_245);
+    assert_eq!(tx_meta.compute_units_consumed, 1_244);
 
     let closed_thing = banks_client.get_account(new_thing_addr).await.unwrap();
     assert!(closed_thing.is_none());
@@ -163,7 +169,7 @@ async fn test_init_thing_already_having_lamports() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 9_298);
+    assert_eq!(tx_meta.compute_units_consumed, 9_297);
 
     // Check the new_thing account.
     let account_data = banks_client
@@ -172,8 +178,11 @@ async fn test_init_thing_already_having_lamports() {
         .unwrap()
         .unwrap()
         .data;
-    assert_eq!(account_data.len(), 16);
     let thing_data = Thing::try_deserialize_data(&mut &account_data[..]).unwrap();
+    assert_eq!(
+        account_data.len(),
+        thing_data.try_account_space().unwrap() as usize
+    );
     assert_eq!(thing_data, Thing { value });
 }
 

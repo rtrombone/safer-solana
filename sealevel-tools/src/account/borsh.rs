@@ -46,9 +46,15 @@ pub fn try_write_borsh_data<const N: usize>(
     account_data.serialize(writer)
 }
 
-pub trait BorshAccountDeserialize<const N: usize>: Discriminate<N> + BorshDeserialize {
+pub trait BorshAccountSerde<const N: usize>:
+    Discriminate<N> + BorshDeserialize + BorshSerialize
+{
     fn try_deserialize_data(data: &mut &[u8]) -> Result<Self> {
         try_deserialize_borsh_data(data, Some(&Self::DISCRIMINATOR))
+    }
+
+    fn try_account_space(&self) -> Result<u64> {
+        borsh::object_length(self).map(|len| len.saturating_add(N) as u64)
     }
 }
 

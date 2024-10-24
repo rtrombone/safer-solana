@@ -46,7 +46,7 @@ pub struct NextEnumeratedAccountOptions<'a, 'b> {
 /// enumerated iterator and optional constraints.
 ///
 /// If any of the constraints are violated, a custom program error code with
-/// [SealevelToolsError::ACCOUNT_INFO_NEXT_ENUMERATED_ACCOUNT] is returned, as well as a program
+/// [SealevelToolsError::ACCOUNT_INFO] is returned, as well as a program
 /// log indicating the specific constraint that was violated.
 ///
 /// # Example

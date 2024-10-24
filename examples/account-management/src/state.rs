@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use sealevel_tools::{
-    account::BorshAccountDeserialize,
+    account::BorshAccountSerde,
     discriminator::{Discriminate, Discriminator},
 };
 
@@ -13,4 +13,4 @@ impl Discriminate<8> for Thing {
     const DISCRIMINATOR: [u8; 8] = Discriminator::Sha2(b"state::Thing").to_bytes();
 }
 
-impl BorshAccountDeserialize<8> for Thing {}
+impl BorshAccountSerde<8> for Thing {}
