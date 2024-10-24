@@ -99,23 +99,20 @@ where
 
     if let Some(key) = key {
         if account.key != key {
-            return Err(SealevelToolsError::NextEnumeratedAccount(
-                index,
-                format!("Found key={}, expected={}", account.key, key),
-            )
+            return Err(SealevelToolsError::AccountInfo(format!(
+                "index: {}. Found key={}, expected={}",
+                index, account.key, key
+            ))
             .into());
         }
     }
 
     if let Some(any_of_keys) = any_of_keys {
         if !any_of_keys.contains(&account.key) {
-            return Err(SealevelToolsError::NextEnumeratedAccount(
-                index,
-                format!(
-                    "Found key={}, expected one of {:?}",
-                    account.key, any_of_keys
-                ),
-            )
+            return Err(SealevelToolsError::AccountInfo(format!(
+                "index: {}. Found key={}, expected one of {:?}",
+                index, account.key, any_of_keys
+            ))
             .into());
         }
     }
@@ -128,23 +125,20 @@ where
                 account.owner,
                 owner,
             );
-            return Err(SealevelToolsError::NextEnumeratedAccount(
-                index,
-                format!("Found owner={}, expected={}", account.owner, owner),
-            )
+            return Err(SealevelToolsError::AccountInfo(format!(
+                "index: {}. Found owner={}, expected={}",
+                index, account.owner, owner
+            ))
             .into());
         }
     }
 
     if let Some(any_of_owners) = any_of_owners {
         if !any_of_owners.contains(&account.owner) {
-            return Err(SealevelToolsError::NextEnumeratedAccount(
-                index,
-                format!(
-                    "Found owner={}, expected one of {:?}",
-                    account.owner, any_of_owners
-                ),
-            )
+            return Err(SealevelToolsError::AccountInfo(format!(
+                "index: {}. Found owner={}, expected one of {:?}",
+                index, account.owner, any_of_owners
+            ))
             .into());
         }
     }
@@ -153,40 +147,40 @@ where
         let (expected_key, _) = Pubkey::find_program_address(seeds, owner);
 
         if *account.key != expected_key {
-            return Err(SealevelToolsError::NextEnumeratedAccount(
-                index,
-                format!("Found key={}, derived={}", account.key, expected_key),
-            )
+            return Err(SealevelToolsError::AccountInfo(format!(
+                "index: {}. Found key={}, derived={}",
+                index, account.key, expected_key
+            ))
             .into());
         }
     }
 
     if let Some(is_signer) = is_signer {
         if account.is_signer != is_signer {
-            return Err(SealevelToolsError::NextEnumeratedAccount(
-                index,
-                format!("Exected is_signer={}", is_signer),
-            )
+            return Err(SealevelToolsError::AccountInfo(format!(
+                "index: {}. Exected is_signer={}",
+                index, is_signer
+            ))
             .into());
         }
     }
 
     if let Some(is_writable) = is_writable {
         if account.is_writable != is_writable {
-            return Err(SealevelToolsError::NextEnumeratedAccount(
-                index,
-                format!("Expected is_writable={}", is_writable),
-            )
+            return Err(SealevelToolsError::AccountInfo(format!(
+                "index: {}. Expected is_writable={}",
+                index, is_writable
+            ))
             .into());
         }
     }
 
     if let Some(executable) = executable {
         if executable != account.executable {
-            return Err(SealevelToolsError::NextEnumeratedAccount(
-                index,
-                format!("Expected executable={}", executable),
-            )
+            return Err(SealevelToolsError::AccountInfo(format!(
+                "index: {}. Expected executable={}",
+                index, executable
+            ))
             .into());
         }
     }

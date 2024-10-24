@@ -255,10 +255,11 @@ where
     )?;
 
     let processed = T::checked_new(account).ok_or_else(|| {
-        SealevelToolsError::NextEnumeratedAccount(
+        SealevelToolsError::AccountInfo(format!(
+            "index: {}. Cannot process account as {}",
             index,
-            format!("Cannot process account as {}", std::any::type_name::<T>()),
-        )
+            std::any::type_name::<T>()
+        ))
     })?;
 
     Ok((index, processed))

@@ -1,7 +1,8 @@
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 
-/// When specified in [CreateAccount], either find the account by its key in the [AccountInfo]
-/// slice (can be expensive) or use the provided [AccountInfo].
+/// Used when either [Pubkey] or [AccountInfo] is an input for a method.
+///
+/// See [CreateAccount](crate::cpi::system_program::CreateAccount) as an example of how it is used.
 pub enum InputAccount<'a, 'b> {
     /// Use this key to find the [AccountInfo] as account to be created.
     Key(&'b Pubkey),
@@ -11,6 +12,7 @@ pub enum InputAccount<'a, 'b> {
 }
 
 impl<'a, 'b> InputAccount<'a, 'b> {
+    /// Get the [Pubkey] reference from the [InputAccount].
     pub fn key(&'b self) -> &'b Pubkey {
         match self {
             InputAccount::Key(key) => key,
@@ -31,6 +33,8 @@ impl<'a, 'b> From<&'b AccountInfo<'a>> for InputAccount<'a, 'b> {
     }
 }
 
+/// Associate signer seeds with an [InputAccount]. Signer seeds may be `None` if
+/// [AccountInfo::is_signer] is true.
 pub struct InputAuthority<'a, 'b, 'c> {
     pub account: InputAccount<'a, 'c>,
     pub signer_seeds: Option<&'c [&'b [u8]]>,

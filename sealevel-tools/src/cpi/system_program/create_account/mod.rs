@@ -24,13 +24,15 @@ use crate::{
 
 /// Arguments for [try_create_account].
 pub struct CreateAccount<'a, 'b, 'c> {
-    /// The account that will pay for the rent.
+    /// The account that will pay for the rent. Either find the account by its key in
+    /// [Self::account_infos] (can be expensive) or use the provided [AccountInfo].
     ///
     /// NOTE: Seeds for the [Self::payer] signer if the payer is a System account managed by the
     /// program. Pass in [None] if the payer is passed in as a signer.
     pub payer: InputAuthority<'a, 'b, 'c>,
 
-    /// The account to be created.
+    /// The account to be created.  Either find the account by its key in [Self::account_infos] (can
+    /// be expensive) or use the provided [AccountInfo].
     ///
     /// NOTE: Seeds for the [Self::to] signer if the account is a PDA. Pass in [None] if the account
     /// is passed in as a random keypair.
@@ -116,20 +118,17 @@ pub fn try_create_account<'a, 'c>(
     }: CreateAccount<'a, '_, 'c>,
 ) -> Result<DataAccount<'a, 'c, true>, ProgramError> {
     let from_pubkey = payer.key();
-
-    let rent_required = Rent::get().map(|rent| rent.minimum_balance(space as usize))?;
     let to_info = match to {
         InputAccount::Key(to_pubkey) => account_infos
             .iter()
             .find(|info| info.key == to_pubkey)
             .ok_or_else(|| {
-                SealevelToolsError::CpiSystemProgramCreateAccount(format!(
-                    "Cannot find {to_pubkey}"
-                ))
+                SealevelToolsError::Cpi("system_program", format!("Cannot find {to_pubkey}"))
             })?,
         InputAccount::Info(to_info) => to_info,
     };
 
+    let rent_required = Rent::get().map(|rent| rent.minimum_balance(space as usize))?;
     let current_lamports = to_info.lamports();
 
     if current_lamports == 0 {
