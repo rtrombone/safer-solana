@@ -1,8 +1,10 @@
 //! [AccountInfo] utilities.
 
 mod account;
+mod close;
 
 pub use account::*;
+pub use close::*;
 
 use solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey};
 

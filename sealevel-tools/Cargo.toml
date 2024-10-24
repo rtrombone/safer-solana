@@ -32,5 +32,4 @@ spl-token-2022 = { optional = true, workspace = true }
 thiserror.workspace = true
 
 [dev-dependencies]
-anchor-lang.workspace = true
 spl-discriminator.workspace = true

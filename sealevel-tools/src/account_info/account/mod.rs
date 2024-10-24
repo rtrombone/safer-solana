@@ -16,13 +16,14 @@ use std::ops::Deref;
 
 use solana_program::{
     account_info::AccountInfo,
+    entrypoint::ProgramResult,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
 };
 
 use crate::{error::SealevelToolsError, types::InputAuthority};
 
-use super::NextEnumeratedAccountOptions;
+use super::{close_account, NextEnumeratedAccountOptions};
 
 /// Trait for processing the next enumerated [AccountInfo] with default options. These options can
 /// be overridden in the [try_next_enumerated_account_as](super::try_next_enumerated_account_as)
@@ -58,6 +59,15 @@ impl<'a, 'b, const WRITE: bool> DataAccount<'a, 'b, WRITE> {
         let data = self.try_borrow_data()?;
         crate::account::try_deserialize_borsh_data(&mut &data[..], discriminator)
             .map_err(Into::into)
+    }
+}
+
+impl<'a, 'b> DataAccount<'a, 'b, true> {
+    pub fn close(&self, beneficiary: &DataAccount<'a, 'b, true>) -> ProgramResult {
+        close_account(super::CloseAccount {
+            account: self.0,
+            beneficiary: beneficiary.0,
+        })
     }
 }
 

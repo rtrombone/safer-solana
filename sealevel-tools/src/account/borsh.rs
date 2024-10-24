@@ -2,6 +2,8 @@ use std::io::{Error, ErrorKind, Read, Result, Write};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use crate::discriminator::Discriminate;
+
 /// This method first reads the expected discriminator from the reader and then deserializes the
 /// data into the given type.
 ///
@@ -42,6 +44,12 @@ pub fn try_write_borsh_data<const N: usize>(
         writer.write_all(discriminator)?;
     }
     account_data.serialize(writer)
+}
+
+pub trait BorshAccountDeserialize<const N: usize>: Discriminate<N> + BorshDeserialize {
+    fn try_deserialize_data(data: &mut &[u8]) -> Result<Self> {
+        try_deserialize_borsh_data(data, Some(&Self::DISCRIMINATOR))
+    }
 }
 
 #[cfg(test)]

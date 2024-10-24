@@ -1,0 +1,22 @@
+[package]
+name = "example-account-management"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+no-entrypoint = []
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+borsh.workspace = true
+sealevel-tools.workspace = true
+solana-program.workspace = true
+
+[dev-dependencies]
+solana-program-test.workspace = true
+solana-sdk.workspace = true
