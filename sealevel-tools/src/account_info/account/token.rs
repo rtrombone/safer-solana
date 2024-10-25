@@ -12,10 +12,12 @@ use super::{DataAccount, PackDataAccount, ProcessNextEnumeratedAccount, Program}
 
 pub const TOKEN_PROGRAM_IDS: [&Pubkey; 2] = [&spl_token::ID, &spl_token_2022::ID];
 
+/// Determine whether the given program ID is either SPL Token or SPL Token 2022 program ID.
 pub fn is_any_token_program_id(program_id: &Pubkey) -> bool {
     TOKEN_PROGRAM_IDS.iter().any(|&id| id == program_id)
 }
 
+/// Wrapper for [Program] for either SPL Token or SPL Token 2022 program.
 pub struct AnyTokenProgram<'a, 'b>(pub(crate) Program<'a, 'b>);
 
 impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for AnyTokenProgram<'a, 'b> {
@@ -42,6 +44,8 @@ impl<'a, 'b> Deref for AnyTokenProgram<'a, 'b> {
     }
 }
 
+/// Wrapper for [DataAccount] that deserializes data with [Pack] for either SPL Token or SPL Token
+/// 2022 program accounts.
 pub struct AnyTokenProgramData<'a, 'b, const WRITE: bool, T: Pack + IsInitialized>(
     pub PackDataAccount<'a, 'b, WRITE, T>,
 );
@@ -74,6 +78,7 @@ impl<'a, 'b, const WRITE: bool, T: Pack + IsInitialized> Deref
     }
 }
 
+/// Wrapper for [Program] for the SPL Token program.
 pub struct TokenProgram<'a, 'b>(pub Program<'a, 'b>);
 
 impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for TokenProgram<'a, 'b> {
@@ -100,6 +105,7 @@ impl<'a, 'b> Deref for TokenProgram<'a, 'b> {
     }
 }
 
+/// Wrapper for [DataAccount] that deserializes data with [Pack] for the SPL Token program.
 pub struct TokenProgramData<'a, 'b, const WRITE: bool, T: Pack + IsInitialized>(
     pub PackDataAccount<'a, 'b, WRITE, T>,
 );
@@ -132,6 +138,7 @@ impl<'a, 'b, const WRITE: bool, T: Pack + IsInitialized> Deref
     }
 }
 
+/// Wrapper for [Program] for the SPL Token 2022 program.
 pub struct Token2022Program<'a, 'b>(pub Program<'a, 'b>);
 
 impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for Token2022Program<'a, 'b> {
@@ -158,6 +165,7 @@ impl<'a, 'b> Deref for Token2022Program<'a, 'b> {
     }
 }
 
+/// Wrapper for [DataAccount] that deserializes data with [Pack] for the SPL Token 2022 program.
 pub struct Token2022ProgramData<'a, 'b, const WRITE: bool, T: Pack + IsInitialized>(
     pub PackDataAccount<'a, 'b, WRITE, T>,
 );

@@ -7,6 +7,9 @@ use crate::{account_info::NextEnumeratedAccountOptions, discriminator::Discrimin
 
 use super::{DataAccount, ProcessNextEnumeratedAccount};
 
+/// Wrapper for [DataAccount] that deserializes data with [borsh] (including a discriminator defined
+/// by [Discriminate::DISCRIMINATOR]). This type warehouses the deserialized data implementing
+/// [Discriminate] and [BorshDeserialize].
 #[derive(Debug)]
 pub struct BorshDataAccount<
     'a,
@@ -24,6 +27,7 @@ impl<'a, 'b, const WRITE: bool, const N: usize, T: Discriminate<N> + BorshDeseri
 {
     type Error = ProgramError;
 
+    /// Deserialize the data from the account.
     fn try_from(account: DataAccount<'a, 'b, WRITE>) -> Result<Self, Self::Error> {
         let data = account.try_read_borsh_data(Some(&T::DISCRIMINATOR))?;
 
@@ -34,6 +38,7 @@ impl<'a, 'b, const WRITE: bool, const N: usize, T: Discriminate<N> + BorshDeseri
 impl<'a, 'b, const N: usize, T: Discriminate<N> + BorshDeserialize>
     BorshDataAccount<'a, 'b, true, N, T>
 {
+    /// Write the data to the account.
     pub fn try_write_data(&self) -> ProgramResult
     where
         T: BorshSerialize,

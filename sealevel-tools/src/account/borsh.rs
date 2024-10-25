@@ -46,13 +46,35 @@ pub fn try_write_borsh_data<const N: usize>(
     account_data.serialize(writer)
 }
 
+/// Trait used to define a Borsh-serializable account, which includes a discriminator. If the
+/// account does not have a discriminator, use N == 0.
+///
+/// ### Example
+///
+/// ```
+/// use borsh::{BorshDeserialize, BorshSerialize};
+/// use sealevel_tools::{account::BorshAccountSerde, discriminator::{Discriminate, Discriminator}};
+///
+/// #[derive(Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize)]
+/// pub struct Thing {
+///     pub value: u64,
+/// }
+///
+/// impl Discriminate<8> for Thing {
+///     const DISCRIMINATOR: [u8; 8] = Discriminator::Sha2(b"state::Thing").to_bytes();
+/// }
+///
+/// impl BorshAccountSerde<8> for Thing {}
+/// ```
 pub trait BorshAccountSerde<const N: usize>:
     Discriminate<N> + BorshDeserialize + BorshSerialize
 {
+    /// Deserialize the data from the given mutable slice of bytes.
     fn try_deserialize_data(data: &mut &[u8]) -> Result<Self> {
         try_deserialize_borsh_data(data, Some(&Self::DISCRIMINATOR))
     }
 
+    /// Compute serialized length including its discriminator.
     fn try_account_space(&self) -> Result<u64> {
         borsh::object_length(self).map(|len| len.saturating_add(N) as u64)
     }

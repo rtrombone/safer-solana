@@ -10,6 +10,7 @@ use crate::account_info::NextEnumeratedAccountOptions;
 
 use super::{DataAccount, ProcessNextEnumeratedAccount, Program};
 
+/// Representing the BPF loader upgradeable program.
 pub struct BpfLoaderUpgradeableProgram<'a, 'b>(pub Program<'a, 'b>);
 
 impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for BpfLoaderUpgradeableProgram<'a, 'b> {
@@ -36,6 +37,7 @@ impl<'a, 'b> Deref for BpfLoaderUpgradeableProgram<'a, 'b> {
     }
 }
 
+/// Representing a program's program data (owned by the BPF Loader Upgradeable program).
 pub struct UpgradeableProgramData<'a, 'b, const WRITE: bool> {
     pub account: DataAccount<'a, 'b, WRITE>,
     pub data: (
@@ -45,10 +47,12 @@ pub struct UpgradeableProgramData<'a, 'b, const WRITE: bool> {
 }
 
 impl<'a, 'b, const WRITE: bool> UpgradeableProgramData<'a, 'b, WRITE> {
+    /// The slot at which the program was last upgraded.
     pub fn slot(&self) -> u64 {
         self.data.0
     }
 
+    /// The upgrade authority address. If `None`, the program is immutable.
     pub fn upgrade_authority_address(&self) -> Option<Pubkey> {
         self.data.1
     }

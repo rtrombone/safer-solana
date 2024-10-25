@@ -8,24 +8,26 @@ use crate::{
     account_info::DataAccount,
     cpi::{
         system_program::{try_create_account, CreateAccount},
-        CpiAuthority,
+        CpiAccount, CpiAuthority,
     },
 };
 
+/// Arguments for [try_create_mint].
 #[derive(Debug)]
 pub struct CreateMint<'a, 'b, 'c> {
     pub token_program_id: &'c Pubkey,
     pub payer: CpiAuthority<'a, 'b, 'c>,
     pub mint: CpiAuthority<'a, 'b, 'c>,
-    pub mint_authority_pubkey: &'c Pubkey,
+    pub mint_authority: CpiAccount<'a, 'c>,
     pub decimals: u8,
     pub account_infos: &'c [AccountInfo<'a>],
-    pub opts: CreateMintOptions<'c>,
+    pub opts: CreateMintOptions<'a, 'c>,
 }
 
+/// Optional arguments for [try_create_mint].
 #[derive(Debug, Default)]
-pub struct CreateMintOptions<'a> {
-    pub freeze_authority_pubkey: Option<&'a Pubkey>,
+pub struct CreateMintOptions<'a, 'b> {
+    pub freeze_authority: Option<CpiAccount<'a, 'b>>,
 }
 
 pub fn try_create_mint<'a, 'c>(
@@ -33,12 +35,10 @@ pub fn try_create_mint<'a, 'c>(
         token_program_id,
         payer,
         mint,
-        mint_authority_pubkey,
+        mint_authority,
         decimals,
         account_infos,
-        opts: CreateMintOptions {
-            freeze_authority_pubkey,
-        },
+        opts: CreateMintOptions { freeze_authority },
     }: CreateMint<'a, '_, 'c>,
 ) -> Result<DataAccount<'a, 'c, true>, ProgramError> {
     // First create the mint account by assigning it to the token program.
@@ -51,10 +51,10 @@ pub fn try_create_mint<'a, 'c>(
     })?;
 
     let instruction = initialize_mint2(
-        token_program_id,
+        &token_program_id,
         mint_account.key,
-        mint_authority_pubkey,
-        freeze_authority_pubkey,
+        mint_authority.key(),
+        freeze_authority.as_ref().map(|account| account.key()),
         decimals,
     )?;
 

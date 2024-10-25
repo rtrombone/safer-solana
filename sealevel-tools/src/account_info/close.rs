@@ -1,5 +1,6 @@
 use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult};
 
+/// Arguments for [try_close_account].
 pub struct CloseAccount<'a, 'b> {
     pub account: &'b AccountInfo<'a>,
     pub beneficiary: &'b AccountInfo<'a>,
@@ -9,7 +10,7 @@ pub struct CloseAccount<'a, 'b> {
 /// account to the System.
 ///
 /// Inspired by <https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/common.rs>.
-pub fn close_account(
+pub fn try_close_account(
     CloseAccount {
         account,
         beneficiary,

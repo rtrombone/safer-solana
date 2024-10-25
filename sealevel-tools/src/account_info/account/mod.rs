@@ -26,7 +26,7 @@ use crate::{
     error::SealevelToolsError,
 };
 
-use super::{close_account, try_next_enumerated_account_info, NextEnumeratedAccountOptions};
+use super::{try_close_account, try_next_enumerated_account_info, NextEnumeratedAccountOptions};
 
 /// Trait for processing the next enumerated [AccountInfo] with default options. These options can
 /// be overridden in the [try_next_enumerated_account] method (like checking for a specific key or
@@ -66,8 +66,8 @@ impl<'a, 'b, const WRITE: bool> DataAccount<'a, 'b, WRITE> {
 }
 
 impl<'a, 'b> DataAccount<'a, 'b, true> {
-    pub fn close(&self, beneficiary: &DataAccount<'a, 'b, true>) -> ProgramResult {
-        close_account(super::CloseAccount {
+    pub fn try_close(&self, beneficiary: &DataAccount<'a, 'b, true>) -> ProgramResult {
+        try_close_account(super::CloseAccount {
             account: self.0,
             beneficiary: beneficiary.0,
         })

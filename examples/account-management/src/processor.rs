@@ -73,7 +73,7 @@ pub fn close_thing(accounts: &[AccountInfo]) -> ProgramResult {
     let (_, beneficiary) =
         try_next_enumerated_account::<DataAccount<true>>(&mut accounts_iter, Default::default())?;
 
-    thing_account.account.close(&beneficiary)?;
+    thing_account.account.try_close(&beneficiary)?;
 
     Ok(())
 }

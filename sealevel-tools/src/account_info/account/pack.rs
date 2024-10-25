@@ -8,6 +8,8 @@ use crate::account_info::NextEnumeratedAccountOptions;
 
 use super::{DataAccount, ProcessNextEnumeratedAccount};
 
+/// Wrapper for [DataAccount] that deserializes data with [Pack]. This type warehouses the
+/// deserialized data implementing [IsInitialized] and [Pack].
 #[derive(Debug)]
 pub struct PackDataAccount<'a, 'b, const WRITE: bool, T: IsInitialized + Pack> {
     pub account: DataAccount<'a, 'b, WRITE>,

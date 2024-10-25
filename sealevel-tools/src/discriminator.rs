@@ -6,6 +6,15 @@
 /// instructions).
 ///
 /// Only Keccak, Sha2 and Sha3 hashing are supported.
+///
+/// ### Example
+///
+/// ```
+/// use sealevel_tools::discriminator::Discriminator;
+///
+/// const DISCRIMINATOR: [u8; 7] = Discriminator::Defined([1, 2, 3, 4, 5, 6, 7]).to_bytes();
+/// const ANOTHER_DISCRIMINATOR: [u8; 4] = Discriminator::Keccak(b"another one").to_bytes();
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Discriminator<'a, const N: usize> {
     Defined([u8; N]),
@@ -54,7 +63,37 @@ impl<'a, const N: usize> Discriminator<'a, N> {
     }
 }
 
+/// Simple trait to enforce a discriminator for a type. This type is used for various account
+/// handling in this crate (specifically serialization/deserialization). Defining
+/// [Discriminate::DISCRIMINATOR] can be used in conjunction with [Discriminator] to generate a
+/// unique discriminator for a type.
+///
+/// ### Example
+///
+/// ```
+/// use sealevel_tools::discriminator::{Discriminate, Discriminator};
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// pub struct Thing {
+///     data: u64
+/// }
+///
+/// impl Discriminate<5> for Thing {
+///    const DISCRIMINATOR: [u8; 5] = [1, 2, 3, 4, 5];
+/// }
+///
+/// #[derive(Debug, PartialEq, Eq)]
+/// pub struct AnotherThing {
+///    data: u64
+/// }
+///
+/// impl Discriminate<4> for AnotherThing {
+///   const DISCRIMINATOR: [u8; 4] = Discriminator::Sha3(b"AnotherThing").to_bytes();
+/// }
+/// ```
 pub trait Discriminate<const N: usize> {
+    /// Fixed-bytes discriminator. This can be used with [Discriminator] to generate bytes based on
+    /// a hash.
     const DISCRIMINATOR: [u8; N];
 }
 
