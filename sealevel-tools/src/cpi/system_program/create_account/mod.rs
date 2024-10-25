@@ -18,8 +18,8 @@ use solana_program::{
 
 use crate::{
     account_info::DataAccount,
+    cpi::{CpiAccount, CpiAuthority},
     error::SealevelToolsError,
-    types::{InputAccount, InputAuthority},
 };
 
 /// Arguments for [try_create_account].
@@ -29,14 +29,14 @@ pub struct CreateAccount<'a, 'b, 'c> {
     ///
     /// NOTE: Seeds for the [Self::payer] signer if the payer is a System account managed by the
     /// program. Pass in [None] if the payer is passed in as a signer.
-    pub payer: InputAuthority<'a, 'b, 'c>,
+    pub payer: CpiAuthority<'a, 'b, 'c>,
 
     /// The account to be created.  Either find the account by its key in [Self::account_infos] (can
     /// be expensive) or use the provided [AccountInfo].
     ///
     /// NOTE: Seeds for the [Self::to] signer if the account is a PDA. Pass in [None] if the account
     /// is passed in as a random keypair.
-    pub to: InputAuthority<'a, 'b, 'c>,
+    pub to: CpiAuthority<'a, 'b, 'c>,
 
     /// The space to allocate for the account.
     pub space: u64,
@@ -90,8 +90,8 @@ pub struct CreateAccount<'a, 'b, 'c> {
 ///
 ///     try_create_account(
 ///         CreateAccount {
-///             payer: payer.as_input_authority(),
-///             to: new_account.as_input_authority(Some(&[b"thing", &[new_thing_bump]])),
+///             payer: payer.as_cpi_authority(),
+///             to: new_account.as_cpi_authority(Some(&[b"thing", &[new_thing_bump]])),
 ///             space: 16,
 ///             program_id,
 ///             account_infos: accounts,
@@ -103,12 +103,12 @@ pub struct CreateAccount<'a, 'b, 'c> {
 pub fn try_create_account<'a, 'c>(
     CreateAccount {
         payer:
-            InputAuthority {
+            CpiAuthority {
                 account: payer,
                 signer_seeds: from_signer_seeds,
             },
         to:
-            InputAuthority {
+            CpiAuthority {
                 account: to,
                 signer_seeds: to_signer_seeds,
             },
@@ -119,13 +119,13 @@ pub fn try_create_account<'a, 'c>(
 ) -> Result<DataAccount<'a, 'c, true>, ProgramError> {
     let from_pubkey = payer.key();
     let to_info = match to {
-        InputAccount::Key(to_pubkey) => account_infos
+        CpiAccount::Key(to_pubkey) => account_infos
             .iter()
             .find(|info| info.key == to_pubkey)
             .ok_or_else(|| {
                 SealevelToolsError::Cpi("system_program", format!("Cannot find {to_pubkey}"))
             })?,
-        InputAccount::Info(to_info) => to_info,
+        CpiAccount::Info(to_info) => to_info,
     };
 
     let rent_required = Rent::get().map(|rent| rent.minimum_balance(space as usize))?;

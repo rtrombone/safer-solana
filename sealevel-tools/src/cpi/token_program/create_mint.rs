@@ -6,18 +6,26 @@ use spl_token_2022::{instruction::initialize_mint2, state::Mint};
 
 use crate::{
     account_info::DataAccount,
-    cpi::system_program::{try_create_account, CreateAccount},
-    types::InputAuthority,
+    cpi::{
+        system_program::{try_create_account, CreateAccount},
+        CpiAuthority,
+    },
 };
 
+#[derive(Debug)]
 pub struct CreateMint<'a, 'b, 'c> {
     pub token_program_id: &'c Pubkey,
-    pub payer: InputAuthority<'a, 'b, 'c>,
-    pub mint: InputAuthority<'a, 'b, 'c>,
+    pub payer: CpiAuthority<'a, 'b, 'c>,
+    pub mint: CpiAuthority<'a, 'b, 'c>,
     pub mint_authority_pubkey: &'c Pubkey,
-    pub freeze_authority_pubkey: Option<&'c Pubkey>,
     pub decimals: u8,
     pub account_infos: &'c [AccountInfo<'a>],
+    pub opts: CreateMintOptions<'c>,
+}
+
+#[derive(Debug, Default)]
+pub struct CreateMintOptions<'a> {
+    pub freeze_authority_pubkey: Option<&'a Pubkey>,
 }
 
 pub fn try_create_mint<'a, 'c>(
@@ -26,9 +34,11 @@ pub fn try_create_mint<'a, 'c>(
         payer,
         mint,
         mint_authority_pubkey,
-        freeze_authority_pubkey,
         decimals,
         account_infos,
+        opts: CreateMintOptions {
+            freeze_authority_pubkey,
+        },
     }: CreateMint<'a, '_, 'c>,
 ) -> Result<DataAccount<'a, 'c, true>, ProgramError> {
     // First create the mint account by assigning it to the token program.

@@ -33,8 +33,8 @@ pub fn init_thing(accounts: &[AccountInfo], value: u64) -> ProgramResult {
 
     try_create_borsh_data_account(
         CreateAccount {
-            payer: payer.as_input_authority(),
-            to: new_thing_account.as_input_authority(Some(&[Thing::SEED, &[new_thing_bump]])),
+            payer: payer.as_cpi_authority(),
+            to: new_thing_account.as_cpi_authority(Some(&[Thing::SEED, &[new_thing_bump]])),
             space: thing.try_account_space()?,
             program_id: &ID,
             account_infos: accounts,

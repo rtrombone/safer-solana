@@ -61,8 +61,8 @@ use crate::{
 ///
 ///     try_create_borsh_data_account(
 ///         CreateAccount {
-///             payer: payer.as_input_authority(),
-///             to: new_account.as_input_authority(Some(&[b"thing", &[new_thing_bump]])),
+///             payer: payer.as_cpi_authority(),
+///             to: new_account.as_cpi_authority(Some(&[b"thing", &[new_thing_bump]])),
 ///             space: 16,
 ///             program_id,
 ///             account_infos: accounts,

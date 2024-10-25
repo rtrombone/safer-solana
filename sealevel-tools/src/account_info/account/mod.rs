@@ -21,7 +21,10 @@ use solana_program::{
     program_pack::{IsInitialized, Pack},
 };
 
-use crate::{error::SealevelToolsError, types::InputAuthority};
+use crate::{
+    cpi::{CpiAccount, CpiAuthority},
+    error::SealevelToolsError,
+};
 
 use super::{close_account, try_next_enumerated_account_info, NextEnumeratedAccountOptions};
 
@@ -104,11 +107,15 @@ impl<'a, 'b, const WRITE: bool> Deref for DataAccount<'a, 'b, WRITE> {
 }
 
 impl<'a, 'c, const WRITE: bool> DataAccount<'a, 'c, WRITE> {
-    pub fn as_input_authority<'b>(
+    pub fn as_cpi_account(&'c self) -> CpiAccount<'a, 'c> {
+        CpiAccount::Info(self.deref())
+    }
+
+    pub fn as_cpi_authority<'b>(
         &'c self,
         signer_seeds: Option<&'c [&'b [u8]]>,
-    ) -> InputAuthority<'a, 'b, 'c> {
-        InputAuthority {
+    ) -> CpiAuthority<'a, 'b, 'c> {
+        CpiAuthority {
             account: self.deref().into(),
             signer_seeds,
         }
@@ -149,6 +156,12 @@ impl<'a, 'b> Deref for Program<'a, 'b> {
     }
 }
 
+impl<'a, 'b> Program<'a, 'b> {
+    pub fn as_cpi_account(&'b self) -> CpiAccount<'a, 'b> {
+        CpiAccount::Info(self.deref())
+    }
+}
+
 /// Generic wrapper for a signer account that can be read from or written to (specified by `WRITE`
 /// const parameter).
 #[derive(Debug)]
@@ -186,8 +199,12 @@ impl<'a, 'b, const WRITE: bool> Deref for Signer<'a, 'b, WRITE> {
 }
 
 impl<'a, 'c, const WRITE: bool> Signer<'a, 'c, WRITE> {
-    pub fn as_input_authority<'b>(&'c self) -> InputAuthority<'a, 'b, 'c> {
-        InputAuthority {
+    pub fn as_cpi_account(&'c self) -> CpiAccount<'a, 'c> {
+        CpiAccount::Info(self.deref())
+    }
+
+    pub fn as_cpi_authority<'b>(&'c self) -> CpiAuthority<'a, 'b, 'c> {
+        CpiAuthority {
             account: self.deref().into(),
             signer_seeds: None,
         }

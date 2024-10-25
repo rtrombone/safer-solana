@@ -5,16 +5,18 @@ use spl_token_2022::instruction::initialize_account3;
 
 use crate::{
     account_info::DataAccount,
-    cpi::system_program::{try_create_account, CreateAccount},
+    cpi::{
+        system_program::{try_create_account, CreateAccount},
+        CpiAccount, CpiAuthority,
+    },
     error::SealevelToolsError,
-    types::{InputAccount, InputAuthority},
 };
 
 pub struct CreateTokenAccount<'a, 'b, 'c> {
-    pub payer: InputAuthority<'a, 'b, 'c>,
-    pub token_account: InputAuthority<'a, 'b, 'c>,
-    pub mint: InputAccount<'a, 'c>,
-    pub token_account_owner: InputAccount<'a, 'c>,
+    pub payer: CpiAuthority<'a, 'b, 'c>,
+    pub token_account: CpiAuthority<'a, 'b, 'c>,
+    pub mint: CpiAccount<'a, 'c>,
+    pub token_account_owner: CpiAccount<'a, 'c>,
     pub account_infos: &'c [AccountInfo<'a>],
 }
 
@@ -29,13 +31,13 @@ pub fn try_create_token_account<'a, 'c>(
 ) -> Result<DataAccount<'a, 'c, true>, ProgramError> {
     // Determine mint account info. This info is used to find the token program ID.
     let mint_info = match &mint {
-        InputAccount::Key(mint_key) => account_infos
+        CpiAccount::Key(mint_key) => account_infos
             .iter()
             .find(|info| info.key == *mint_key)
             .ok_or_else(|| {
                 SealevelToolsError::Cpi("token_program", format!("Cannot find mint {mint_key}"))
             })?,
-        InputAccount::Info(info) => info,
+        CpiAccount::Info(info) => info,
     };
 
     // Create the token account by assigning it to the token program.
