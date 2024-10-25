@@ -54,8 +54,6 @@ pub struct CreateAccount<'a, 'b, 'c> {
 /// ### Example
 ///
 /// ```
-/// use std::ops::Deref;
-///
 /// use sealevel_tools::{
 ///     account_info::{
 ///         try_next_enumerated_account, NextEnumeratedAccountOptions, DataAccount, Program,

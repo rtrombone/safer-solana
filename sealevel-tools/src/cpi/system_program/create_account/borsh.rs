@@ -13,10 +13,9 @@ use crate::{
 /// ### Example
 ///
 /// ```
-/// use std::ops::Deref;
-///
 /// use borsh::{BorshDeserialize, BorshSerialize};
 /// use sealevel_tools::{
+///     account::BorshAccountSerde,
 ///     account_info::{
 ///         try_next_enumerated_account, NextEnumeratedAccountOptions, DataAccount, Program,
 ///         Signer,
@@ -32,9 +31,11 @@ use crate::{
 /// }
 ///
 ///
-/// impl Discriminate<8> for Thing {
-///     const DISCRIMINATOR: [u8; 8] = Discriminator::Sha2(b"account:Thing").to_bytes();
+/// impl Discriminate<4> for Thing {
+///     const DISCRIMINATOR: [u8; 4] = Discriminator::Sha2(b"Thing").to_bytes();
 /// }
+///
+/// impl BorshAccountSerde<4> for Thing {}
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
@@ -59,15 +60,17 @@ use crate::{
 ///         },
 ///     )?;
 ///
+///     let thing = Thing { data: 420 };
+///
 ///     try_create_borsh_data_account(
 ///         CreateAccount {
 ///             payer: payer.as_cpi_authority(),
 ///             to: new_account.as_cpi_authority(Some(&[b"thing", &[new_thing_bump]])),
-///             space: 16,
+///             space: thing.try_account_space()?,
 ///             program_id,
 ///             account_infos: accounts,
 ///         },
-///         &Thing { data: 420 },
+///         &thing,
 ///     )?;
 ///
 ///     Ok(())

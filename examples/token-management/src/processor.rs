@@ -47,7 +47,7 @@ pub fn init_mint(
         decimals,
         account_infos: accounts,
         opts: CreateMintOptions {
-            freeze_authority: freeze_authority.as_ref().map(|key| CpiAccount::Key(key)),
+            freeze_authority: freeze_authority.as_ref().map(CpiAccount::Key),
         },
     })?;
 
