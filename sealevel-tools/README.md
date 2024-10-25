@@ -1,11 +1,12 @@
 # Sealevel Tools
 
 This crate is not an attempt to create a new framework for writing Solana programs. Instead, it is a
-set of tools that should help a developer do whatever he wants to do in a Solana program without
-prescribing any specific way of doing so. By using these tools, a developer can write a lightweight
-program with functionality found in other frameworks.
+set of tools that should help a developer write a Solana program without prescribing any specific
+way of doing so. By using these tools, a developer can write a lightweight program with
+functionality found in other frameworks.
 
-Currently pinning Solana version to 1.18. Looking to support Solana 2.0 in the future.
+Currently supports Solana version >=1.18.18 (which includes 2.0). Keep in mind that this package's
+MSRV is 1.75, but your Rust toolchain should be 1.81 for Solana version 2.0.
 
 ## Examples
 
@@ -13,12 +14,12 @@ Here are some ways of using these tools to write your first program.
 
 ### Instruction Selectors
 
-Frameworks like `anchor-lang` and `spl-discriminator` prescribe that the first 8 bytes of a Sha256
+Frameworks like [anchor-lang] and [spl-discriminator] prescribe that the first 8 bytes of a Sha256
 hash representing the name of a given instruction should be used to determine how instruction data
 should be processed in your program.
 
-For example, `anchor-lang` typically uses the input "global:your_instruction_name" to generate the
-Sha256 hash. This can be achieved using `Discriminator` found in these tools:
+For example, [anchor-lang] typically uses the input "global:your_instruction_name" to generate the
+Sha256 hash. This can be achieved using `sealevel_tools::discriminator::Discriminator`:
 
 ```rs
 const YOUR_INSTRUCTION_SELECTOR: [u8; 8] =
@@ -139,17 +140,17 @@ pub fn process_instruction(
 solana_program::entrypoint!(process_instruction);
 ```
 
-Instead of just logging using `msg!`, you would use a processor method relevant for each instruction
+Instead of just logging using [msg!], you would use a processor method relevant for each instruction
 (e.g. matching `DoSomething` would call an internal method resembling
 `fn process_do_something(accounts: &[AccountInfo], data: u64)`).
 
 ## Accounts
 
-Without using a framework, the `AccountInfo` slice's iterator is used in conjunction with
-`next_account_info` to take the next `AccountInfo` from this slice.
+Without using a framework, the [AccountInfo] slice's iterator is used in conjunction with
+[next_account_info] to take the next [AccountInfo] from this slice.
 
-With a framework like `anchor-lang`, these accounts are defined upfront in a struct, which derives
-the `Accounts` trait:
+With a framework like [anchor-lang], these accounts are defined upfront in a struct, which derives
+the [Accounts] trait:
 
 ```rs
 #[derive(Accounts)]
@@ -195,7 +196,7 @@ Without a struct, you may iterate like so:
     let (new_thing_addr, new_thing_bump) = Pubkey::find_program_address(&[b"thing"], program_id);
 
     // Second account is the new Thing.
-    let (_, new_thing_account) = try_next_enumerated_account_as::<DataAccount<true>>(
+    let (_, new_thing_account) = try_next_enumerated_account::<DataAccount<true>>(
         &mut accounts_iter,
         NextEnumeratedAccountOptions {
             key: Some(&new_thing_addr),
@@ -204,12 +205,13 @@ Without a struct, you may iterate like so:
     )?;
 ```
 
-`try_next_enumerated_account_as<T>` takes an enumerated iterator and returns tools-defined types,
-which are simple wrappers around `AccountInfo` (e.g. `Signer<const WRITE: bool>` where `WRITE`
-defines whether the account is writable). `NextEnumeratedAccountOptions` provide some optional
-constraints when plucking off the next account (e.g. verifying that the pubkey equals what you
-expect). In the above example, we are asserting that the new `Thing` account is a
-`DataAccount<true>`, whose const bool value says that it is a writable account.
+`sealevel_tools::account_info::try_next_enumerated_account` takes an enumerated iterator and
+returns tools-defined types, which are simple wrappers around [AccountInfo] (e.g.
+`Signer<const WRITE: bool>` where `WRITE` defines whether the account is writable).
+`NextEnumeratedAccountOptions` provide some optional constraints when plucking off the next account
+(e.g. verifying that the pubkey equals what you expect). In the above example, we are asserting that
+the new `Thing` account is a `DataAccount<true>`, whose const bool value says that it is a writable
+account.
 
 If you desire more structure in your life, encapsulate the account plucking logic in a struct:
 
@@ -230,12 +232,12 @@ impl<'a, 'b> AddThingAccounts<'a, 'b> {
     ) -> Result<Self, ProgramError> {
         let mut accounts_iter = accounts.iter().enumerate();
 
-        let payer = try_next_enumerated_account_as(&mut accounts_iter, Default::default())?;
+        let payer = try_next_enumerated_account(&mut accounts_iter, Default::default())?;
 
         let (new_thing_addr, new_thing_bump) =
             Pubkey::find_program_address(&[b"thing"], program_id);
 
-        let (new_thing_index, new_thing_account) = try_next_enumerated_account_as(
+        let (new_thing_index, new_thing_account) = try_next_enumerated_account(
             &mut accounts_iter,
             NextEnumeratedAccountOptions {
                 key: Some(&new_thing_addr),
@@ -255,13 +257,13 @@ Account indices are helpful when a particular account has an error (where you ca
 colorful error message indicating which account is the culprit). Solana program frameworks just give
 a pubkey or name of the account that failed, which are helpful relative to the IDL these SDKs
 leverage. But when writing a program with these tools, the next best option is giving the index of
-the accounts array you passed into your transaction. `try_next_enumerated_account_as` has error
+the accounts array you passed into your transaction. `try_next_enumerated_account` has error
 handling that gives the user information about which account index failed any checks using the
 `NextEnumeratedAccountOptions`.
 
 Also notice that we do not check that the System program is provided. You can add an explicit check
-for it (like how `anchor-lang` requires it). Or it can be assumed that it is one of the remaining
-accounts in the `AccountInfo` slice since the `Thing` being created would fail without it (since the
+for it (like how [anchor-lang] requires it). Or it can be assumed that it is one of the remaining
+accounts in the [AccountInfo] slice since the `Thing` being created would fail without it (since the
 CPI call to the System program requires it).
 
 To wrap up this example, because `Thing` is a new account, you can create it like so:
@@ -269,13 +271,11 @@ To wrap up this example, because `Thing` is a new account, you can create it lik
 ```rs
     try_create_borsh_data_account(
         CreateAccount {
-            from_pubkey,
-            to: new_thing_account.deref().into(),
+            payer: payer.as_cpi_authority(),
+            to: new_thing_account.as_cpi_authority(Some(&[b"thing", &[new_thing_bump]])),
             space: 16,
             program_id,
             account_infos: accounts,
-            from_signer_seeds: None,
-            to_signer_seeds: Some(&[b"thing", &[new_thing_bump]]),
         },
         &Thing { data: 69 },
         Some(&Thing::DISCRIMINATOR),
@@ -290,17 +290,17 @@ pub struct Thing {
     pub data: u64,
 }
 
-impl Thing {
-    pub const DISCRIMINATOR: [u8; 8] = Discriminator::Sha2(b"account:Thing").to_bytes();
+impl Discriminate<8> for Thing {
+    const DISCRIMINATOR: [u8; 8] = Discriminator::Sha2(b"account:Thing").to_bytes();
 }
 ```
 
-The account discriminator does not have to be 8 bytes like how `anchor-lang` and `spl-discriminator`
+The account discriminator does not have to be 8 bytes like how [anchor-lang] and [spl-discriminator]
 enforce it to be. To save on a bit of rent, 4 bytes should be sufficient to avoid collision among
 all of your program's data accounts (where the cost savings is 4 * 6,960 lamports).
 
 There are more lines of code required to perform the same functionality that Solana program
-framework may remove from your life. For example, `anchor-lang` would only require this to
+framework may remove from your life. For example, [anchor-lang] would only require this to
 instantiate your `Thing`:
 ```rs
     pub fn add_thing(ctx: Context<AddThing>) -> Result<()> {
@@ -322,13 +322,13 @@ while providing some guardrails. These guardrails are not meant to enforce any s
 iterating through entrypoint accounts, account serialization/deserialization (serde), how
 instruction discriminators should be set, etc.
 
-The developer should write his program however he wants. For example, a developer may want his
-instruction selectors to be the first 4-bytes of a Keccak256 hash similar to how Solidity for EVM
-works. Or to be consistent with how `anchor-lang` and `spl-discriminator` define discriminators as
-the first 8-bytes of Sha256 (sha2).
+The developer should write a program without any artificial constraints. For example, a developer
+may want instruction selectors to be the first 4-bytes of a Keccak256 hash similar to how Solidity
+for EVM works. Or to be consistent with how [anchor-lang] and [spl-discriminator] define
+discriminators as the first 8-bytes of Sha256 (sha2).
 
 What this crate does not attempt to do is generate an IDL. While convenient when using frameworks
-like `anchor-lang` and `shank` (where a front-end language-agnostic developer can take an IDL and
+like [anchor-lang] and [shank] (where a front-end language-agnostic developer can take an IDL and
 build an SDK using it), these tools are meant to focus on safer program development. Writing
 instruction builders is trivial, and any time spent trying to resolve headaches having an IDL build
 using any of these frameworks can be saved by writing custom instruction builders in whichever
@@ -338,3 +338,11 @@ Solana program frameworks attempt to remove boilerplate from writing instruction
 with that comes the price of having to learn how these specific macros work. And these macros can
 add a lot of bloat to your program, where your program size can easily be double the size of a
 program with the same logic but without a specific framework.
+
+[AccountInfo]: https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html
+[Accounts]: https://docs.rs/anchor-lang/latest/anchor_lang/trait.Accounts.html
+[anchor-lang]: https://docs.rs/anchor-lang/latest/anchor_lang/
+[msg!]: https://docs.rs/solana-program/latest/solana_program/macro.msg.html
+[next_account_info]: https://docs.rs/solana-program/latest/solana_program/account_info/fn.next_account_info.html
+[spl-discriminator]: https://docs.rs/spl-discriminator/latest/spl_discriminator/
+[shank]: https://docs.rs/shank/latest/shank/
