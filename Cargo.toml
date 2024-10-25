@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "examples/account-management",
+    "examples/token-management",
     "sealevel-tools"
 ]
 resolver = "2"

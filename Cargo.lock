@@ -1303,6 +1303,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-token-management"
+version = "0.2.0-beta.1"
+dependencies = [
+ "borsh 1.5.1",
+ "sealevel-tools",
+ "solana-banks-interface",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token",
+ "spl-token-2022 4.0.0",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

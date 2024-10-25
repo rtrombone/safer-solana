@@ -20,8 +20,9 @@ async fn test_thing() {
     .start()
     .await;
 
-    let (new_thing_addr, _) =
+    let (new_thing_addr, new_thing_bump) =
         Pubkey::find_program_address(&[b"thing"], &example_account_management::ID);
+    assert_eq!(new_thing_bump, 255);
 
     let mut transaction = Transaction::new_with_payer(
         &[InitThing {
@@ -145,8 +146,9 @@ async fn test_init_thing_already_having_lamports() {
     .start()
     .await;
 
-    let (new_thing_addr, _) =
+    let (new_thing_addr, new_thing_bump) =
         Pubkey::find_program_address(&[b"thing"], &example_account_management::ID);
+    assert_eq!(new_thing_bump, 255);
 
     let mut transaction = Transaction::new_with_payer(
         &[
