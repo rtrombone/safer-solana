@@ -5,8 +5,9 @@ use sealevel_tools::{
         Signer,
     },
     cpi::system_program::{try_create_borsh_data_account, CreateAccount},
+    pda::DeriveAddress,
 };
-use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult};
 
 use crate::{state::Thing, ID};
 
@@ -17,7 +18,7 @@ pub fn init_thing(accounts: &[AccountInfo], value: u64) -> ProgramResult {
     let (_, payer) =
         try_next_enumerated_account::<Signer<true>>(&mut accounts_iter, Default::default())?;
 
-    let (new_thing_addr, new_thing_bump) = Pubkey::find_program_address(&[b"thing"], &ID);
+    let (new_thing_addr, new_thing_bump) = Thing::find_program_address(());
 
     // Second account is the new Thing.
     let (_, new_thing_account) = try_next_enumerated_account::<DataAccount<true>>(
@@ -33,7 +34,7 @@ pub fn init_thing(accounts: &[AccountInfo], value: u64) -> ProgramResult {
     try_create_borsh_data_account(
         CreateAccount {
             payer: payer.as_input_authority(),
-            to: new_thing_account.as_input_authority(Some(&[b"thing", &[new_thing_bump]])),
+            to: new_thing_account.as_input_authority(Some(&[Thing::SEED, &[new_thing_bump]])),
             space: thing.try_account_space()?,
             program_id: &ID,
             account_infos: accounts,

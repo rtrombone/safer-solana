@@ -5,4 +5,5 @@ pub mod account_info;
 pub mod cpi;
 pub mod discriminator;
 pub mod error;
+pub mod pda;
 pub mod types;
