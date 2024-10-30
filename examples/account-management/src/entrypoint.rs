@@ -1,14 +1,12 @@
 use borsh::BorshDeserialize;
-use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
-    pubkey::Pubkey,
-};
+use solana_nostd_entrypoint::{basic_panic_impl, entrypoint_nostd, NoStdAccountInfo};
+use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
 
 use crate::{instruction::ProgramInstruction, processor};
 
-pub fn process_instruction(
+fn process_instruction(
     program_id: &Pubkey,
-    accounts: &[AccountInfo],
+    accounts: &[NoStdAccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
     if program_id != &crate::ID {
@@ -24,4 +22,7 @@ pub fn process_instruction(
     }
 }
 
-solana_program::entrypoint!(process_instruction);
+entrypoint_nostd!(process_instruction, 32);
+
+//noalloc_allocator!();
+basic_panic_impl!();

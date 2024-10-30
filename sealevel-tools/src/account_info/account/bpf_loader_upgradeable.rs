@@ -1,27 +1,27 @@
-use std::ops::Deref;
+use core::ops::Deref;
 
+use solana_nostd_entrypoint::NoStdAccountInfo;
 use solana_program::{
-    account_info::AccountInfo,
     bpf_loader_upgradeable::{UpgradeableLoaderState, ID},
     pubkey::Pubkey,
 };
 
 use crate::account_info::NextEnumeratedAccountOptions;
 
-use super::{DataAccount, ProcessNextEnumeratedAccount, Program};
+use super::{Account, ProcessNextEnumeratedAccount, Program};
 
 /// Representing the BPF loader upgradeable program.
-pub struct BpfLoaderUpgradeableProgram<'a, 'b>(pub Program<'a, 'b>);
+pub struct BpfLoaderUpgradeableProgram<'a>(pub Program<'a>);
 
-impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for BpfLoaderUpgradeableProgram<'a, 'b> {
+impl<'a> ProcessNextEnumeratedAccount<'a> for BpfLoaderUpgradeableProgram<'a> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         NextEnumeratedAccountOptions {
             key: Some(&ID),
             ..Program::NEXT_ACCOUNT_OPTIONS
         };
 
-    fn checked_new(account: &'b AccountInfo<'a>) -> Option<Self> {
-        if account.key == &ID {
+    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
+        if account.key() == &ID {
             Some(Self(Program(account)))
         } else {
             None
@@ -29,8 +29,8 @@ impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for BpfLoaderUpgradeableProgra
     }
 }
 
-impl<'a, 'b> Deref for BpfLoaderUpgradeableProgram<'a, 'b> {
-    type Target = Program<'a, 'b>;
+impl<'a> Deref for BpfLoaderUpgradeableProgram<'a> {
+    type Target = Program<'a>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -38,15 +38,18 @@ impl<'a, 'b> Deref for BpfLoaderUpgradeableProgram<'a, 'b> {
 }
 
 /// Representing a program's program data (owned by the BPF Loader Upgradeable program).
-pub struct UpgradeableProgramData<'a, 'b, const WRITE: bool> {
-    pub account: DataAccount<'a, 'b, WRITE>,
+pub struct UpgradeableProgramData<'a, const WRITE: bool> {
+    pub account: Account<'a, WRITE>,
     pub data: (
         u64,            // slot
         Option<Pubkey>, // upgrade_authority_address
     ),
 }
 
-impl<'a, 'b, const WRITE: bool> UpgradeableProgramData<'a, 'b, WRITE> {
+pub type UpgradeableReadOnlyProgramData<'a> = UpgradeableProgramData<'a, false>;
+pub type UpgradeableWritableProgramData<'a> = UpgradeableProgramData<'a, true>;
+
+impl<'a, const WRITE: bool> UpgradeableProgramData<'a, WRITE> {
     /// The slot at which the program was last upgraded.
     pub fn slot(&self) -> u64 {
         self.data.0
@@ -58,18 +61,16 @@ impl<'a, 'b, const WRITE: bool> UpgradeableProgramData<'a, 'b, WRITE> {
     }
 }
 
-impl<'a, 'b, const WRITE: bool> ProcessNextEnumeratedAccount<'a, 'b>
-    for UpgradeableProgramData<'a, 'b, WRITE>
-{
+impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for UpgradeableProgramData<'a, WRITE> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         NextEnumeratedAccountOptions {
             owner: Some(&ID),
-            ..DataAccount::<'a, 'b, WRITE>::NEXT_ACCOUNT_OPTIONS
+            ..Account::<'a, WRITE>::NEXT_ACCOUNT_OPTIONS
         };
 
-    fn checked_new(account: &'b AccountInfo<'a>) -> Option<Self> {
-        if account.owner == &ID {
-            let account = DataAccount::checked_new(account)?;
+    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
+        if account.owner() == &ID {
+            let account = Account::checked_new(account)?;
 
             let data = {
                 let data = account.try_borrow_data().ok()?;

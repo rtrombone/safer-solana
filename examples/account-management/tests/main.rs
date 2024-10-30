@@ -1,7 +1,7 @@
 use example_account_management::{instruction::ProgramInstruction, state::Thing};
-use sealevel_tools::account::BorshAccountSerde;
+use sealevel_tools::account::{AccountSerde, BorshAccountSchema};
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
-use solana_program_test::{processor, tokio, ProgramTest};
+use solana_program_test::{tokio, ProgramTest};
 use solana_sdk::{
     instruction::AccountMeta, signer::Signer, system_instruction, system_program,
     transaction::Transaction,
@@ -15,7 +15,7 @@ async fn test_thing() {
     let (mut banks_client, payer, recent_blockhash) = ProgramTest::new(
         "example_account_management",
         example_account_management::ID,
-        processor!(example_account_management::entrypoint::process_instruction),
+        None,
     )
     .start()
     .await;
@@ -42,7 +42,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 5_915);
+    assert_eq!(tx_meta.compute_units_consumed, 3_693);
 
     // Check the new_thing account.
     let account_data = banks_client
@@ -51,12 +51,13 @@ async fn test_thing() {
         .unwrap()
         .unwrap()
         .data;
-    let thing_data = Thing::try_deserialize_data(&mut &account_data[..]).unwrap();
+    let thing_data =
+        BorshAccountSchema::<8, Thing>::try_deserialize_data(&mut &account_data[..]).unwrap();
     assert_eq!(
         account_data.len(),
         thing_data.try_account_space().unwrap() as usize
     );
-    assert_eq!(thing_data, Thing { value });
+    assert_eq!(thing_data.0, Thing { value });
 
     // Update.
     let new_value = 420;
@@ -78,7 +79,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 808);
+    assert_eq!(tx_meta.compute_units_consumed, 268);
 
     // Check the thing account.
     let account_data = banks_client
@@ -87,12 +88,13 @@ async fn test_thing() {
         .unwrap()
         .unwrap()
         .data;
-    let thing_data = Thing::try_deserialize_data(&mut &account_data[..]).unwrap();
+    let thing_data =
+        BorshAccountSchema::<8, Thing>::try_deserialize_data(&mut &account_data[..]).unwrap();
     assert_eq!(
         account_data.len(),
         thing_data.try_account_space().unwrap() as usize
     );
-    assert_eq!(thing_data, Thing { value: new_value });
+    assert_eq!(thing_data.0, Thing { value: new_value });
 
     // Close.
     let beneficiary = Pubkey::new_unique();
@@ -120,7 +122,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 1_244);
+    assert_eq!(tx_meta.compute_units_consumed, 456);
 
     let closed_thing = banks_client.get_account(new_thing_addr).await.unwrap();
     assert!(closed_thing.is_none());
@@ -141,7 +143,7 @@ async fn test_init_thing_already_having_lamports() {
     let (mut banks_client, payer, recent_blockhash) = ProgramTest::new(
         "example_account_management",
         example_account_management::ID,
-        processor!(example_account_management::entrypoint::process_instruction),
+        None,
     )
     .start()
     .await;
@@ -171,7 +173,7 @@ async fn test_init_thing_already_having_lamports() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 9_297);
+    assert_eq!(tx_meta.compute_units_consumed, 6_279);
 
     // Check the new_thing account.
     let account_data = banks_client
@@ -180,12 +182,13 @@ async fn test_init_thing_already_having_lamports() {
         .unwrap()
         .unwrap()
         .data;
-    let thing_data = Thing::try_deserialize_data(&mut &account_data[..]).unwrap();
+    let thing_data =
+        BorshAccountSchema::<8, Thing>::try_deserialize_data(&mut &account_data[..]).unwrap();
     assert_eq!(
         account_data.len(),
         thing_data.try_account_space().unwrap() as usize
     );
-    assert_eq!(thing_data, Thing { value });
+    assert_eq!(thing_data.0, Thing { value });
 }
 
 fn program_failed(log_messages: &Vec<String>) -> bool {

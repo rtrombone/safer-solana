@@ -1,33 +1,29 @@
-use solana_program::{
-    account_info::AccountInfo, program::invoke, program_error::ProgramError, program_pack::Pack,
-    pubkey::Pubkey,
-};
-use spl_token_2022::{instruction::initialize_mint2, state::Mint};
+use solana_nostd_entrypoint::NoStdAccountInfo;
+use solana_program::{program_error::ProgramError, program_pack::Pack, pubkey::Pubkey};
+use spl_token_2022::state::Mint;
 
 use crate::{
-    account_info::DataAccount,
+    account_info::{is_any_token_program_id, Account},
     cpi::{
-        system_program::{try_create_account, CreateAccount},
-        CpiAccount, CpiAuthority,
+        system_program::{try_failsafe_create_account, FailsafeCreateAccount},
+        CpiAuthority, CpiPrecursor,
     },
 };
 
 /// Arguments for [try_create_mint].
-#[derive(Debug)]
-pub struct CreateMint<'a, 'b, 'c> {
-    pub token_program_id: &'c Pubkey,
-    pub payer: CpiAuthority<'a, 'b, 'c>,
-    pub mint: CpiAuthority<'a, 'b, 'c>,
-    pub mint_authority: CpiAccount<'a, 'c>,
+pub struct CreateMint<'a, 'b> {
+    pub token_program_id: &'b Pubkey,
+    pub payer: CpiAuthority<'a, 'b>,
+    pub mint: CpiAuthority<'a, 'b>,
+    pub mint_authority: &'b Pubkey,
     pub decimals: u8,
-    pub account_infos: &'c [AccountInfo<'a>],
-    pub opts: CreateMintOptions<'a, 'c>,
+    pub opts: CreateMintOptions<'b>,
 }
 
 /// Optional arguments for [try_create_mint].
-#[derive(Debug, Default)]
-pub struct CreateMintOptions<'a, 'b> {
-    pub freeze_authority: Option<CpiAccount<'a, 'b>>,
+#[derive(Default)]
+pub struct CreateMintOptions<'a> {
+    pub freeze_authority: Option<&'a Pubkey>,
 }
 
 /// Create a mint account. This method creates an account for one of the Token programs and
@@ -39,18 +35,16 @@ pub struct CreateMintOptions<'a, 'b> {
 /// use sealevel_tools::{
 ///     account_info::{
 ///         try_next_enumerated_account, try_next_enumerated_account_info, AnyTokenProgram,
-///         NextEnumeratedAccountOptions, DataAccount, Signer,
+///         NextEnumeratedAccountOptions, Account, Signer,
 ///     },
-///     cpi::{
-///         token_program::{try_create_mint, CreateMint},
-///         CpiAccount,
-///     },
+///     cpi::token_program::{try_create_mint, CreateMint},
 /// };
-/// use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+/// use solana_nostd_entrypoint::NoStdAccountInfo;
+/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
-///      accounts: &[AccountInfo],
+///      accounts: &[NoStdAccountInfo],
 ///      instruction_data: &[u8],
 /// ) -> ProgramResult {
 ///     let mut accounts_iter = accounts.iter().enumerate();
@@ -63,7 +57,7 @@ pub struct CreateMintOptions<'a, 'b> {
 ///         Pubkey::find_program_address(&[b"mint"], program_id);
 ///
 ///     // Next account must be writable data account matching PDA address.
-///     let (_, new_mint_account) = try_next_enumerated_account::<DataAccount<true>>(
+///     let (_, new_mint_account) = try_next_enumerated_account::<Account<true>>(
 ///         &mut accounts_iter,
 ///         NextEnumeratedAccountOptions {
 ///             key: Some(&new_mint_addr),
@@ -80,47 +74,106 @@ pub struct CreateMintOptions<'a, 'b> {
 ///         try_next_enumerated_account::<AnyTokenProgram>(&mut accounts_iter, Default::default())?;
 ///
 ///     try_create_mint(CreateMint {
-///         token_program_id: token_program.key,
+///         token_program_id: token_program.key(),
 ///         payer: payer.as_cpi_authority(),
 ///         mint: new_mint_account.as_cpi_authority(Some(&[b"mint", &[new_mint_bump]])),
-///         mint_authority: CpiAccount::Info(&mint_authority),
+///         mint_authority: mint_authority.key(),
 ///         decimals: 9,
-///         account_infos: accounts,
 ///         opts: Default::default(), // No freeze authority specified.
 ///     })?;
 ///
 ///     Ok(())
 /// }
 /// ```
-pub fn try_create_mint<'a, 'c>(
+pub fn try_create_mint<'b>(
     CreateMint {
         token_program_id,
         payer,
         mint,
         mint_authority,
         decimals,
-        account_infos,
         opts: CreateMintOptions { freeze_authority },
-    }: CreateMint<'a, '_, 'c>,
-) -> Result<DataAccount<'a, 'c, true>, ProgramError> {
+    }: CreateMint<'_, 'b>,
+) -> Result<Account<'b, true>, ProgramError> {
+    if !is_any_token_program_id(token_program_id) {
+        return Err(ProgramError::InvalidAccountData);
+    }
+
     // First create the mint account by assigning it to the token program.
-    let mint_account = try_create_account(CreateAccount {
+    let mint_account = try_failsafe_create_account(FailsafeCreateAccount {
         payer,
         to: mint,
         space: Mint::LEN as u64,
         program_id: token_program_id,
-        account_infos,
     })?;
 
-    let instruction = initialize_mint2(
+    _invoke_initialize_mint2_unchecked(
         token_program_id,
-        mint_account.key,
-        mint_authority.key(),
-        freeze_authority.as_ref().map(|account| account.key()),
+        &mint_account,
+        mint_authority,
+        freeze_authority,
         decimals,
-    )?;
-
-    invoke(&instruction, account_infos)?;
+    );
 
     Ok(mint_account)
+}
+
+pub struct InitializeMint2<'a> {
+    pub token_program_id: &'a Pubkey,
+    pub mint: &'a NoStdAccountInfo,
+    pub mint_authority: &'a Pubkey,
+    pub freeze_authority: Option<&'a Pubkey>,
+    pub decimals: u8,
+}
+
+pub fn invoke_initialize_mint2_unchecked(
+    InitializeMint2 {
+        token_program_id,
+        mint,
+        mint_authority,
+        freeze_authority,
+        decimals,
+    }: InitializeMint2,
+) {
+    _invoke_initialize_mint2_unchecked(
+        token_program_id,
+        mint,
+        mint_authority,
+        freeze_authority,
+        decimals,
+    );
+}
+
+#[inline(always)]
+pub fn _invoke_initialize_mint2_unchecked(
+    token_program_id: &Pubkey,
+    mint: &NoStdAccountInfo,
+    mint_authority: &Pubkey,
+    freeze_authority: Option<&Pubkey>,
+    decimals: u8,
+) {
+    const IX_DATA_LEN: usize = 1 // selector
+        + 1 // decimals
+        + 32 // mint_authority
+        + 1 + 32; // freeze_authority
+
+    let mut instruction_data = [0; IX_DATA_LEN];
+
+    // Initialize mint 2 selector == 20.
+    instruction_data[0] = 20;
+    instruction_data[1] = decimals;
+    instruction_data[2..34].copy_from_slice(&mint_authority.to_bytes());
+
+    if let Some(freeze_authority) = freeze_authority {
+        instruction_data[34] = 1;
+        instruction_data[35..67].copy_from_slice(&freeze_authority.to_bytes());
+    }
+
+    CpiPrecursor {
+        program_id: token_program_id,
+        accounts: [mint.to_meta_c()],
+        instruction_data,
+        infos: [mint.to_info_c()],
+    }
+    .invoke_signed_unchecked(&[]);
 }

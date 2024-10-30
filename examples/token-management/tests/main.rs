@@ -1,6 +1,6 @@
 use example_token_management::instruction::ProgramInstruction;
 use solana_banks_interface::TransactionMetadata;
-use solana_program_test::{processor, tokio, BanksClient, ProgramTest};
+use solana_program_test::{tokio, BanksClient, ProgramTest};
 use solana_sdk::{
     hash::Hash,
     instruction::{AccountMeta, Instruction},
@@ -32,7 +32,7 @@ async fn test_init_mint_token_program() {
     // NOTE: Mint bump is 252, which requires 3 iterations to find a mint key. Each iteration costs
     // 1,500 CU. So, the total cost is 4,500 CU for this PDA.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 3 * 1_500;
-    assert_eq!(adjusted_compute_units_consumed, 10_935);
+    assert_eq!(adjusted_compute_units_consumed, 8_273);
 }
 
 #[tokio::test]
@@ -54,7 +54,7 @@ async fn test_init_mint_token_2022_program() {
     // NOTE: Mint bump is 252, which requires 3 iterations to find a mint key. Each iteration costs
     // 1,500 CU. So, the total cost is 4,500 CU for this PDA.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 3 * 1_500;
-    assert_eq!(adjusted_compute_units_consumed, 11_299);
+    assert_eq!(adjusted_compute_units_consumed, 8_644);
 }
 
 #[tokio::test]
@@ -77,7 +77,7 @@ async fn test_init_mint_token_program_and_freeze_authority() {
     // NOTE: Mint bump is 252, which requires 3 iterations to find a mint key. Each iteration costs
     // 1,500 CU. So, the total cost is 4,500 CU for this PDA.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 3 * 1_500;
-    assert_eq!(adjusted_compute_units_consumed, 11_244);
+    assert_eq!(adjusted_compute_units_consumed, 8_588);
 }
 
 #[tokio::test]
@@ -100,7 +100,7 @@ async fn test_init_mint_token_2022_program_and_freeze_authority() {
     // NOTE: Mint bump is 252, which requires 3 iterations to find a mint key. Each iteration costs
     // 1,500 CU. So, the total cost is 4,500 CU for this PDA.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 3 * 1_500;
-    assert_eq!(adjusted_compute_units_consumed, 11_594);
+    assert_eq!(adjusted_compute_units_consumed, 8_945);
 }
 
 async fn set_up(
@@ -112,7 +112,7 @@ async fn set_up(
     let (banks_client, payer, recent_blockhash) = ProgramTest::new(
         "example_token_management",
         example_token_management::ID,
-        processor!(example_token_management::entrypoint::process_instruction),
+        None,
     )
     .start()
     .await;

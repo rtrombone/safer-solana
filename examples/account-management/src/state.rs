@@ -1,6 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use sealevel_tools::{
-    account::BorshAccountSerde,
     discriminator::{Discriminate, Discriminator},
     pda::DeriveAddress,
 };
@@ -18,8 +17,6 @@ impl Thing {
 impl Discriminate<8> for Thing {
     const DISCRIMINATOR: [u8; 8] = Discriminator::Sha2(b"state::Thing").to_bytes();
 }
-
-impl BorshAccountSerde<8> for Thing {}
 
 impl DeriveAddress for Thing {
     type Seeds<'a> = ();

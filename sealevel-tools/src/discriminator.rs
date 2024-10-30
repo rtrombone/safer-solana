@@ -1,5 +1,9 @@
 //! Discriminator generation for program accounts, events, and instructions.
 
+use core::borrow::Borrow;
+
+use alloc::{borrow::ToOwned, boxed::Box};
+
 /// Discriminator generated either by user-defined or by specific hashing function (where total hash
 /// output is 256 bits). These discriminators can be used for discriminating against serialized
 /// program accounts, serialized events, and instructions (as selectors for specific program
@@ -16,8 +20,8 @@
 /// const ANOTHER_DISCRIMINATOR: [u8; 4] = Discriminator::Keccak(b"another one").to_bytes();
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Discriminator<'a, const N: usize> {
-    Defined([u8; N]),
+pub enum Discriminator<'a, const LEN: usize> {
+    Defined([u8; LEN]),
 
     // Using keccak hasher.
     Keccak(&'a [u8]),
@@ -30,11 +34,11 @@ pub enum Discriminator<'a, const N: usize> {
     Sha3(&'a [u8]),
 }
 
-impl<'a, const N: usize> Discriminator<'a, N> {
-    /// Be careful when using this method because there is no const constraint that prevents N to be
-    /// larger than a computed digest's length (32 bytes). If N is larger, the output will be padded
+impl<'a, const LEN: usize> Discriminator<'a, LEN> {
+    /// Be careful when using this method because there is no const constraint that prevents LEN to be
+    /// larger than a computed digest's length (32 bytes). If LEN is larger, the output will be padded
     /// to the right with zeros.
-    pub const fn to_bytes(self) -> [u8; N] {
+    pub const fn to_bytes(self) -> [u8; LEN] {
         let digest = match self {
             Discriminator::Defined(disc) => return disc,
             Discriminator::Keccak(input) => const_crypto::sha3::Keccak256::new()
@@ -48,10 +52,10 @@ impl<'a, const N: usize> Discriminator<'a, N> {
             }
         };
 
-        let mut inner = [0; N];
+        let mut inner = [0; LEN];
         let mut i = 0;
         loop {
-            if i >= N || i >= digest.len() {
+            if i >= LEN || i >= digest.len() {
                 break;
             }
 
@@ -91,14 +95,19 @@ impl<'a, const N: usize> Discriminator<'a, N> {
 ///   const DISCRIMINATOR: [u8; 4] = Discriminator::Sha3(b"AnotherThing").to_bytes();
 /// }
 /// ```
-pub trait Discriminate<const N: usize> {
+pub trait Discriminate<const LEN: usize> {
     /// Fixed-bytes discriminator. This can be used with [Discriminator] to generate bytes based on
     /// a hash.
-    const DISCRIMINATOR: [u8; N];
+    const DISCRIMINATOR: [u8; LEN];
 }
 
-impl<const N: usize, T: Discriminate<N>> Discriminate<N> for Box<T> {
-    const DISCRIMINATOR: [u8; N] = T::DISCRIMINATOR;
+impl<const LEN: usize, T, U> Discriminate<LEN> for Box<T>
+where
+    U: Into<Box<T>> + Borrow<T>,
+    T: Discriminate<LEN> + ToOwned<Owned = U> + ?Sized,
+    T::Owned: Discriminate<LEN>,
+{
+    const DISCRIMINATOR: [u8; LEN] = T::DISCRIMINATOR;
 }
 
 #[cfg(test)]

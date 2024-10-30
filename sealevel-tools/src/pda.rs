@@ -109,7 +109,7 @@ macro_rules! impl_to_seed {
     ($($t:ty),*) => {
         $(
             impl ToSeed for $t {
-                type Bytes = [u8; std::mem::size_of::<$t>()];
+                type Bytes = [u8; core::mem::size_of::<$t>()];
 
                 fn to_seed(self) -> Self::Bytes {
                     self.to_be_bytes()

@@ -3,7 +3,7 @@ use sealevel_tools::{
     account_info::{
         try_next_enumerated_account, DataAccount, NextEnumeratedAccountOptions, Signer,
     },
-    cpi::system_program::{try_create_borsh_data_account, CreateAccount},
+    cpi::system_program::{try_create_borsh_data_account, FailsafeCreateAccount},
     discriminator::{Discriminate, Discriminator},
 };
 use solana_program::{
@@ -48,7 +48,7 @@ pub fn process_instruction(
     )?;
 
     try_create_borsh_data_account(
-        CreateAccount {
+        FailsafeCreateAccount {
             payer: payer.as_input_authority(),
             to: new_thing_account.as_input_authority(Some(&[b"thing", &[new_thing_bump]])),
             space: 16,

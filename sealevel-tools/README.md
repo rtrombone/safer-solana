@@ -196,7 +196,7 @@ Without a struct, you may iterate like so:
     let (new_thing_addr, new_thing_bump) = Pubkey::find_program_address(&[b"thing"], program_id);
 
     // Second account is the new Thing.
-    let (_, new_thing_account) = try_next_enumerated_account::<DataAccount<true>>(
+    let (_, new_thing_account) = try_next_enumerated_account::<Account<true>>(
         &mut accounts_iter,
         NextEnumeratedAccountOptions {
             key: Some(&new_thing_addr),
@@ -210,7 +210,7 @@ returns tools-defined types, which are simple wrappers around [AccountInfo] (e.g
 `Signer<const WRITE: bool>` where `WRITE` defines whether the account is writable).
 `NextEnumeratedAccountOptions` provide some optional constraints when plucking off the next account
 (e.g. verifying that the pubkey equals what you expect). In the above example, we are asserting that
-the new `Thing` account is a `DataAccount<true>`, whose const bool value says that it is a writable
+the new `Thing` account is a `Account<true>`, whose const bool value says that it is a writable
 account.
 
 If you desire more structure in your life, encapsulate the account plucking logic in a struct:
@@ -220,7 +220,7 @@ struct AddThingAccounts<'a, 'b> {
     payer: (usize, Signer<'a, 'b, true>),
     new_thing: (
         usize,
-        DataAccount<'a, 'b, true>,
+        Account<'a, 'b, true>,
         u8, // bump
     ),
 }
@@ -269,8 +269,8 @@ CPI call to the System program requires it).
 To wrap up this example, because `Thing` is a new account, you can create it like so:
 
 ```rs
-    try_create_borsh_data_account(
-        CreateAccount {
+    try_create_serialized_account(
+        FailsafeCreateAccount {
             payer: payer.as_cpi_authority(),
             to: new_thing_account.as_cpi_authority(Some(&[b"thing", &[new_thing_bump]])),
             space: 16,

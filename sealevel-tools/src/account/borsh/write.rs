@@ -1,22 +1,22 @@
-use std::io::{Error, ErrorKind, Result, Write};
-
+use borsh::io::{Error, ErrorKind, Result, Write};
 use solana_program::program_memory::sol_memcpy;
 
-use crate::account_info::DataAccount;
+use crate::account_info::Account;
 
-/// Struct that implements [Write] for use with writable [DataAccount].
+/// Struct that implements [Write] for use with writable [Account].
 ///
 /// Inspired by <https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/bpf_writer.rs>.
-pub struct AccountWriter<'a, 'b, 'c> {
-    account: &'c DataAccount<'a, 'b, true>,
+pub struct BorshAccountWriter<'a, 'b> {
+    account: &'b Account<'a, true>,
     position: usize,
 }
 
-impl<'a, 'b, 'c> AccountWriter<'a, 'b, 'c> {
-    /// Instantiate a new writer using a reference to writable [DataAccount].
+impl<'a, 'b> BorshAccountWriter<'a, 'b> {
+    /// Instantiate a new writer using a reference to writable [Account].
     ///
     /// Position defaults to zero.
-    pub fn new(account: &'c DataAccount<'a, 'b, true>) -> Self {
+    #[inline(always)]
+    pub fn new(account: &'b Account<'a, true>) -> Self {
         Self {
             account,
             position: 0,
@@ -24,10 +24,11 @@ impl<'a, 'b, 'c> AccountWriter<'a, 'b, 'c> {
     }
 }
 
-impl<'a, 'b, 'c> Write for AccountWriter<'a, 'b, 'c> {
+impl<'a, 'b> Write for BorshAccountWriter<'a, 'b> {
+    #[inline(always)]
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         let Self {
-            account: DataAccount(info),
+            account: Account(info),
             position,
         } = self;
 
@@ -46,6 +47,7 @@ impl<'a, 'b, 'c> Write for AccountWriter<'a, 'b, 'c> {
         Ok(n)
     }
 
+    #[inline(always)]
     fn write_all(&mut self, data: &[u8]) -> Result<()> {
         if self.write(data)? == data.len() {
             Ok(())
@@ -57,6 +59,7 @@ impl<'a, 'b, 'c> Write for AccountWriter<'a, 'b, 'c> {
         }
     }
 
+    #[inline(always)]
     fn flush(&mut self) -> Result<()> {
         Ok(())
     }

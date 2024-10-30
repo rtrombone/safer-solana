@@ -1,4 +1,4 @@
-//! [AccountInfo] utilities.
+//! [NoStdAccountInfo] utilities.
 
 mod account;
 mod close;
@@ -6,12 +6,15 @@ mod close;
 pub use account::*;
 pub use close::*;
 
-use solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey};
+use alloc::format;
+
+use solana_nostd_entrypoint::NoStdAccountInfo;
+use solana_program::{msg, program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::SealevelToolsError;
 
 /// Optional arguments for [try_next_enumerated_account_info], which specify constraints for the next
-/// [AccountInfo].
+/// [NoStdAccountInfo].
 #[derive(Debug, Default)]
 pub struct NextEnumeratedAccountOptions<'a, 'b> {
     /// If provided, the next account's key must equal this pubkey.
@@ -52,12 +55,15 @@ pub struct NextEnumeratedAccountOptions<'a, 'b> {
 /// # Example
 ///
 /// ```
-/// use sealevel_tools::account_info::{try_next_enumerated_account_info, NextEnumeratedAccountOptions};
-/// use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+/// use sealevel_tools::account_info::{
+///     try_next_enumerated_account_info, NextEnumeratedAccountOptions
+/// };
+/// use solana_nostd_entrypoint::NoStdAccountInfo;
+/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
-///      accounts: &[AccountInfo],
+///      accounts: &[NoStdAccountInfo],
 ///      instruction_data: &[u8],
 /// ) -> ProgramResult {
 ///     let mut accounts_iter = accounts.iter().enumerate();
@@ -81,7 +87,8 @@ pub struct NextEnumeratedAccountOptions<'a, 'b> {
 ///     Ok(())
 /// }
 /// ```
-pub fn try_next_enumerated_account_info<'a, 'b, 'c, I>(
+#[inline(always)]
+pub fn try_next_enumerated_account_info<'a, 'b, I>(
     iter: &mut I,
     NextEnumeratedAccountOptions {
         key,
@@ -95,51 +102,59 @@ pub fn try_next_enumerated_account_info<'a, 'b, 'c, I>(
     }: NextEnumeratedAccountOptions,
 ) -> Result<I::Item, ProgramError>
 where
-    I: Iterator<Item = (usize, &'c AccountInfo<'a>)>,
+    I: Iterator<Item = (usize, &'b NoStdAccountInfo)>,
 {
     let (index, account) = iter.next().ok_or(ProgramError::NotEnoughAccountKeys)?;
 
     if let Some(key) = key {
-        if account.key != key {
+        if account.key() != key {
             return Err(SealevelToolsError::AccountInfo(format!(
                 "index: {}. Found key={}, expected={}",
-                index, account.key, key
+                index,
+                account.key(),
+                key
             ))
             .into());
         }
     }
 
     if let Some(any_of_keys) = any_of_keys {
-        if !any_of_keys.contains(&account.key) {
+        if !any_of_keys.contains(&account.key()) {
             return Err(SealevelToolsError::AccountInfo(format!(
                 "index: {}. Found key={}, expected one of {:?}",
-                index, account.key, any_of_keys
+                index,
+                account.key(),
+                any_of_keys
             ))
             .into());
         }
     }
 
     if let Some(owner) = owner {
-        if account.owner != owner {
+        if account.owner() != owner {
             msg!(
                 "ProgramError caused by account index={}. Found owner={}, expected={}.",
                 index,
-                account.owner,
+                account.owner(),
                 owner,
             );
             return Err(SealevelToolsError::AccountInfo(format!(
                 "index: {}. Found owner={}, expected={}",
-                index, account.owner, owner
+                index,
+                account.owner(),
+                owner
             ))
             .into());
         }
     }
 
     if let Some(any_of_owners) = any_of_owners {
-        if !any_of_owners.contains(&account.owner) {
+        if !any_of_owners.contains(&account.owner()) {
             return Err(SealevelToolsError::AccountInfo(format!(
                 "index: {}. Found owner={}, expected one of {:?}",
-                index, account.owner, any_of_owners
+                index,
+                account.owner(),
+                any_of_owners
             ))
             .into());
         }
@@ -148,17 +163,19 @@ where
     if let Some((seeds, owner)) = seeds {
         let (expected_key, _) = Pubkey::find_program_address(seeds, owner);
 
-        if *account.key != expected_key {
+        if *account.key() != expected_key {
             return Err(SealevelToolsError::AccountInfo(format!(
                 "index: {}. Found key={}, derived={}",
-                index, account.key, expected_key
+                index,
+                account.key(),
+                expected_key
             ))
             .into());
         }
     }
 
     if let Some(is_signer) = is_signer {
-        if account.is_signer != is_signer {
+        if account.is_signer() != is_signer {
             return Err(SealevelToolsError::AccountInfo(format!(
                 "index: {}. Exected is_signer={}",
                 index, is_signer
@@ -168,7 +185,7 @@ where
     }
 
     if let Some(is_writable) = is_writable {
-        if account.is_writable != is_writable {
+        if account.is_writable() != is_writable {
             return Err(SealevelToolsError::AccountInfo(format!(
                 "index: {}. Expected is_writable={}",
                 index, is_writable
@@ -178,7 +195,7 @@ where
     }
 
     if let Some(executable) = executable {
-        if executable != account.executable {
+        if executable != account.executable() {
             return Err(SealevelToolsError::AccountInfo(format!(
                 "index: {}. Expected executable={}",
                 index, executable

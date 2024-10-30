@@ -4,46 +4,81 @@ pub mod system_program;
 #[cfg(feature = "token")]
 pub mod token_program;
 
-use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
+use core::ops::Deref;
 
-/// Used when either [Pubkey] or [AccountInfo] is an input for a CPI call.
-///
-/// See [CreateAccount](crate::cpi::system_program::CreateAccount) as an example of how it is used.
-#[derive(Debug)]
-pub enum CpiAccount<'a, 'b> {
-    /// Use this key to find the [AccountInfo] as account to be created.
-    Key(&'b Pubkey),
+use solana_nostd_entrypoint::{AccountInfoC, AccountMetaC, InstructionC, NoStdAccountInfo};
+use solana_program::pubkey::Pubkey;
 
-    /// Use this [AccountInfo] as the account to be created.
-    Info(&'b AccountInfo<'a>),
+/// Associate signer seeds with an [NoStdAccountInfo]. Signer seeds may be `None` if
+/// [NoStdAccountInfo::is_signer] is true.
+pub struct CpiAuthority<'a, 'b> {
+    pub account: &'b NoStdAccountInfo,
+    pub signer_seeds: Option<&'b [&'a [u8]]>,
 }
 
-impl<'a, 'b> CpiAccount<'a, 'b> {
-    /// Get the [Pubkey] reference from the [CpiAccount].
-    pub fn key(&'b self) -> &'b Pubkey {
-        match self {
-            CpiAccount::Key(key) => key,
-            CpiAccount::Info(info) => info.key,
+impl<'a, 'b> CpiAuthority<'a, 'b> {
+    pub fn borrow(&self) -> CpiAuthority {
+        CpiAuthority {
+            account: self.account,
+            signer_seeds: self.signer_seeds,
         }
     }
 }
 
-impl<'a, 'b> From<&'b Pubkey> for CpiAccount<'a, 'b> {
-    fn from(pubkey: &'b Pubkey) -> Self {
-        CpiAccount::Key(pubkey)
+impl<'a, 'b> Deref for CpiAuthority<'a, 'b> {
+    type Target = NoStdAccountInfo;
+
+    fn deref(&self) -> &Self::Target {
+        self.account
     }
 }
 
-impl<'a, 'b> From<&'b AccountInfo<'a>> for CpiAccount<'a, 'b> {
-    fn from(info: &'b AccountInfo<'a>) -> Self {
-        CpiAccount::Info(info)
+pub struct CpiPrecursor<'a, const ACCOUNT_LEN: usize, const DATA_LEN: usize> {
+    program_id: &'a Pubkey,
+    accounts: [AccountMetaC; ACCOUNT_LEN],
+    instruction_data: [u8; DATA_LEN],
+    infos: [AccountInfoC; ACCOUNT_LEN],
+}
+
+impl<'a, const ACCOUNT_LEN: usize, const DATA_LEN: usize> CpiPrecursor<'a, ACCOUNT_LEN, DATA_LEN> {
+    pub fn invoke_signed_unchecked(&self, signer_seeds: &[&[&[u8]]]) {
+        let Self {
+            program_id,
+            accounts,
+            instruction_data,
+            infos,
+        } = self;
+
+        let instruction = InstructionC {
+            program_id: (*program_id),
+            accounts: accounts.as_ptr(),
+            accounts_len: accounts.len() as u64,
+            data: instruction_data.as_ptr(),
+            data_len: instruction_data.len() as u64,
+        };
+
+        invoke_signed_unchecked(&instruction, infos, signer_seeds);
     }
 }
 
-/// Associate signer seeds with an [CpiAccount]. Signer seeds may be `None` if
-/// [AccountInfo::is_signer] is true.
-#[derive(Debug)]
-pub struct CpiAuthority<'a, 'b, 'c> {
-    pub account: CpiAccount<'a, 'c>,
-    pub signer_seeds: Option<&'c [&'b [u8]]>,
+pub fn invoke_signed_unchecked(
+    instruction: &InstructionC,
+    infos: &[AccountInfoC],
+    seeds: &[&[&[u8]]],
+) {
+    // Invoke system program
+    #[cfg(target_os = "solana")]
+    unsafe {
+        solana_program::syscalls::sol_invoke_signed_c(
+            instruction as *const InstructionC as *const u8,
+            infos.as_ptr() as *const u8,
+            infos.len() as u64,
+            seeds.as_ptr() as *const u8,
+            seeds.len() as u64,
+        );
+    }
+
+    // For clippy
+    #[cfg(not(target_os = "solana"))]
+    let _ = (instruction, infos, seeds);
 }

@@ -12,61 +12,36 @@ pub use pack::*;
 #[cfg(feature = "token")]
 pub use token::*;
 
-use std::ops::Deref;
+use core::ops::Deref;
 
-use solana_program::{
-    account_info::AccountInfo,
-    entrypoint::ProgramResult,
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack},
-};
+use solana_nostd_entrypoint::NoStdAccountInfo;
+use solana_program::{entrypoint::ProgramResult, program_error::ProgramError};
 
-use crate::{
-    cpi::{CpiAccount, CpiAuthority},
-    error::SealevelToolsError,
-};
+use crate::{account::AccountSerde, cpi::CpiAuthority, error::SealevelToolsError};
 
 use super::{try_close_account, try_next_enumerated_account_info, NextEnumeratedAccountOptions};
 
-/// Trait for processing the next enumerated [AccountInfo] with default options. These options can
+/// Trait for processing the next enumerated [NoStdAccountInfo] with default options. These options can
 /// be overridden in the [try_next_enumerated_account] method (like checking for a specific key or
 /// owner).
-pub trait ProcessNextEnumeratedAccount<'a, 'b>: Sized {
+pub trait ProcessNextEnumeratedAccount<'a>: Sized {
     /// Default options for processing the next enumerated account.
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static>;
 
     /// Only return `Some(Self)` if the account meets the criteria specified by the struct
     /// implementing this trait.
-    fn checked_new(account: &'b AccountInfo<'a>) -> Option<Self>;
+    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self>;
 }
 
 /// Generic wrapper for a data account that can be read from or written to (specified by `WRITE`
 /// const parameter).
-#[derive(Debug)]
-pub struct DataAccount<'a, 'b, const WRITE: bool>(pub(crate) &'b AccountInfo<'a>);
+pub struct Account<'a, const WRITE: bool>(pub(crate) &'a NoStdAccountInfo);
 
-impl<'a, 'b, const WRITE: bool> DataAccount<'a, 'b, WRITE> {
-    /// Read data serialized with the [Pack] trait from the account.
-    pub fn try_read_pack_data<T: Pack + IsInitialized>(&self) -> Result<T, ProgramError> {
-        let data = self.try_borrow_data()?;
-        T::unpack(&data)
-    }
+pub type ReadonlyAccount<'a> = Account<'a, false>;
+pub type WritableAccount<'a> = Account<'a, true>;
 
-    /// Read data serialized with the [BorshDeserialize](::borsh::BorshDeserialize) trait from the
-    /// account.
-    #[cfg(feature = "borsh")]
-    pub fn try_read_borsh_data<const N: usize, T: ::borsh::BorshDeserialize>(
-        &self,
-        discriminator: Option<&[u8; N]>,
-    ) -> Result<T, ProgramError> {
-        let data = self.try_borrow_data()?;
-        crate::account::try_deserialize_borsh_data(&mut &data[..], discriminator)
-            .map_err(Into::into)
-    }
-}
-
-impl<'a, 'b> DataAccount<'a, 'b, true> {
-    pub fn try_close(&self, beneficiary: &DataAccount<'a, 'b, true>) -> ProgramResult {
+impl<'a> Account<'a, true> {
+    pub fn try_close(&self, beneficiary: &Account<'a, true>) -> ProgramResult {
         try_close_account(super::CloseAccount {
             account: self.0,
             beneficiary: beneficiary.0,
@@ -74,9 +49,7 @@ impl<'a, 'b> DataAccount<'a, 'b, true> {
     }
 }
 
-impl<'a, 'b, const WRITE: bool> ProcessNextEnumeratedAccount<'a, 'b>
-    for DataAccount<'a, 'b, WRITE>
-{
+impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for Account<'a, WRITE> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         NextEnumeratedAccountOptions {
             key: None,
@@ -89,8 +62,9 @@ impl<'a, 'b, const WRITE: bool> ProcessNextEnumeratedAccount<'a, 'b>
             executable: None,
         };
 
-    fn checked_new(account: &'b AccountInfo<'a>) -> Option<Self> {
-        if account.is_writable == WRITE {
+    #[inline(always)]
+    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
+        if account.is_writable() == WRITE {
             Some(Self(account))
         } else {
             None
@@ -98,35 +72,30 @@ impl<'a, 'b, const WRITE: bool> ProcessNextEnumeratedAccount<'a, 'b>
     }
 }
 
-impl<'a, 'b, const WRITE: bool> Deref for DataAccount<'a, 'b, WRITE> {
-    type Target = AccountInfo<'a>;
+impl<'a, const WRITE: bool> Deref for Account<'a, WRITE> {
+    type Target = NoStdAccountInfo;
 
-    fn deref(&self) -> &'b Self::Target {
+    fn deref(&self) -> &'a Self::Target {
         self.0
     }
 }
 
-impl<'a, 'c, const WRITE: bool> DataAccount<'a, 'c, WRITE> {
-    pub fn as_cpi_account(&'c self) -> CpiAccount<'a, 'c> {
-        CpiAccount::Info(self.deref())
-    }
-
-    pub fn as_cpi_authority<'b>(
-        &'c self,
-        signer_seeds: Option<&'c [&'b [u8]]>,
-    ) -> CpiAuthority<'a, 'b, 'c> {
+impl<'b, const WRITE: bool> Account<'b, WRITE> {
+    pub fn as_cpi_authority<'a>(
+        &'b self,
+        signer_seeds: Option<&'b [&'a [u8]]>,
+    ) -> CpiAuthority<'a, 'b> {
         CpiAuthority {
-            account: self.deref().into(),
+            account: self.deref(),
             signer_seeds,
         }
     }
 }
 
 /// Generic wrapper for a program account.
-#[derive(Debug)]
-pub struct Program<'a, 'b>(pub(crate) &'b AccountInfo<'a>);
+pub struct Program<'a>(pub(crate) &'a NoStdAccountInfo);
 
-impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for Program<'a, 'b> {
+impl<'a> ProcessNextEnumeratedAccount<'a> for Program<'a> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         NextEnumeratedAccountOptions {
             key: None,
@@ -139,8 +108,9 @@ impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for Program<'a, 'b> {
             executable: Some(true),
         };
 
-    fn checked_new(account: &'b AccountInfo<'a>) -> Option<Self> {
-        if account.executable {
+    #[inline(always)]
+    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
+        if account.executable() {
             Some(Self(account))
         } else {
             None
@@ -148,26 +118,22 @@ impl<'a, 'b> ProcessNextEnumeratedAccount<'a, 'b> for Program<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Deref for Program<'a, 'b> {
-    type Target = AccountInfo<'a>;
+impl<'a> Deref for Program<'a> {
+    type Target = NoStdAccountInfo;
 
-    fn deref(&self) -> &'b Self::Target {
+    fn deref(&self) -> &'a Self::Target {
         self.0
-    }
-}
-
-impl<'a, 'b> Program<'a, 'b> {
-    pub fn as_cpi_account(&'b self) -> CpiAccount<'a, 'b> {
-        CpiAccount::Info(self.deref())
     }
 }
 
 /// Generic wrapper for a signer account that can be read from or written to (specified by `WRITE`
 /// const parameter).
-#[derive(Debug)]
-pub struct Signer<'a, 'b, const WRITE: bool>(pub(crate) &'b AccountInfo<'a>);
+pub struct Signer<'a, const WRITE: bool>(pub(crate) &'a NoStdAccountInfo);
 
-impl<'a, 'b, const WRITE: bool> ProcessNextEnumeratedAccount<'a, 'b> for Signer<'a, 'b, WRITE> {
+pub type Authority<'a> = Signer<'a, false>;
+pub type Payer<'a> = Signer<'a, true>;
+
+impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for Signer<'a, WRITE> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         NextEnumeratedAccountOptions {
             key: None,
@@ -181,8 +147,9 @@ impl<'a, 'b, const WRITE: bool> ProcessNextEnumeratedAccount<'a, 'b> for Signer<
             executable: Some(false),
         };
 
-    fn checked_new(account: &'b AccountInfo<'a>) -> Option<Self> {
-        if account.is_signer && account.is_writable == WRITE {
+    #[inline(always)]
+    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
+        if account.is_signer() && account.is_writable() == WRITE {
             Some(Self(account))
         } else {
             None
@@ -190,51 +157,93 @@ impl<'a, 'b, const WRITE: bool> ProcessNextEnumeratedAccount<'a, 'b> for Signer<
     }
 }
 
-impl<'a, 'b, const WRITE: bool> Deref for Signer<'a, 'b, WRITE> {
-    type Target = AccountInfo<'a>;
+impl<'a, const WRITE: bool> Deref for Signer<'a, WRITE> {
+    type Target = NoStdAccountInfo;
 
-    fn deref(&self) -> &'b Self::Target {
+    fn deref(&self) -> &'a Self::Target {
         self.0
     }
 }
 
-impl<'a, 'c, const WRITE: bool> Signer<'a, 'c, WRITE> {
-    pub fn as_cpi_account(&'c self) -> CpiAccount<'a, 'c> {
-        CpiAccount::Info(self.deref())
-    }
-
-    pub fn as_cpi_authority<'b>(&'c self) -> CpiAuthority<'a, 'b, 'c> {
+impl<'b, const WRITE: bool> Signer<'b, WRITE> {
+    pub fn as_cpi_authority<'a>(&'b self) -> CpiAuthority<'a, 'b> {
         CpiAuthority {
-            account: self.deref().into(),
+            account: self.deref(),
             signer_seeds: None,
         }
     }
 }
 
-/// Like [try_next_enumerated_account_info], but processes the account as a specific type implementing
-/// [ProcessNextEnumeratedAccount].
+/// Wrapper for [Account] that deserializes data with [Pack]. This type warehouses the
+/// deserialized data implementing [IsInitialized] and [Pack].
+pub struct DataAccount<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> {
+    pub account: Account<'a, WRITE>,
+    pub data: T,
+}
+
+impl<'a, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> DataAccount<'a, true, DISC_LEN, T> {
+    /// Write the data to the account.
+    pub fn try_write_data(&self) -> ProgramResult {
+        let Self { account, data } = self;
+
+        let mut info_data = account.try_borrow_mut_data()?;
+        data.try_serialize_data(&mut info_data)
+    }
+}
+
+impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
+    TryFrom<Account<'a, WRITE>> for DataAccount<'a, WRITE, DISC_LEN, T>
+{
+    type Error = ProgramError;
+
+    fn try_from(account: Account<'a, WRITE>) -> Result<Self, Self::Error> {
+        let data = {
+            let data = account.try_borrow_data()?;
+            T::try_deserialize_data(&mut &data[..])?
+        };
+
+        Ok(Self { account, data })
+    }
+}
+
+impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
+    ProcessNextEnumeratedAccount<'a> for DataAccount<'a, WRITE, DISC_LEN, T>
+{
+    const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
+        Account::<'a, WRITE>::NEXT_ACCOUNT_OPTIONS;
+
+    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
+        let account = Account::checked_new(account)?;
+
+        Self::try_from(account).ok()
+    }
+}
+
+/// Like [try_next_enumerated_account_info], but processes the account as a specific type
+/// implementing [ProcessNextEnumeratedAccount].
 ///
 /// ### Example
 ///
 /// ```
 /// use sealevel_tools::account_info::{
-///     try_next_enumerated_account, NextEnumeratedAccountOptions, DataAccount, Program, Signer,
+///     try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, Program, ReadonlyAccount,
 /// };
-/// use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+/// use solana_nostd_entrypoint::NoStdAccountInfo;
+/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
-///      accounts: &[AccountInfo],
+///      accounts: &[NoStdAccountInfo],
 ///      instruction_data: &[u8],
 /// ) -> ProgramResult {
 ///     let mut accounts_iter = accounts.iter().enumerate();
 ///
 ///     // Next account must writable signer (A.K.A. our payer).
 ///     let (index, payer) =
-///         try_next_enumerated_account::<Signer<true>>(&mut accounts_iter, Default::default())?;
+///         try_next_enumerated_account::<Payer>(&mut accounts_iter, Default::default())?;
 ///
 ///     // Next account must be read-only data account.
-///     let (index, readonly_account) = try_next_enumerated_account::<DataAccount<false>>(
+///     let (index, readonly_account) = try_next_enumerated_account::<ReadonlyAccount>(
 ///         &mut accounts_iter,
 ///         Default::default()
 ///     )?;
@@ -250,8 +259,9 @@ impl<'a, 'c, const WRITE: bool> Signer<'a, 'c, WRITE> {
 ///     Ok(())
 /// }
 /// ```
-pub fn try_next_enumerated_account<'a, 'b, 'c, T>(
-    iter: &mut impl Iterator<Item = (usize, &'c AccountInfo<'a>)>,
+#[inline(always)]
+pub fn try_next_enumerated_account<'a, 'b, T>(
+    iter: &mut impl Iterator<Item = (usize, &'b NoStdAccountInfo)>,
     NextEnumeratedAccountOptions {
         key,
         any_of_keys,
@@ -264,8 +274,7 @@ pub fn try_next_enumerated_account<'a, 'b, 'c, T>(
     }: NextEnumeratedAccountOptions,
 ) -> Result<(usize, T), ProgramError>
 where
-    'a: 'c,
-    T: ProcessNextEnumeratedAccount<'a, 'c>,
+    T: ProcessNextEnumeratedAccount<'b>,
 {
     let (index, account) = try_next_enumerated_account_info(
         iter,
@@ -282,10 +291,10 @@ where
     )?;
 
     let processed = T::checked_new(account).ok_or_else(|| {
-        SealevelToolsError::AccountInfo(format!(
+        SealevelToolsError::AccountInfo(alloc::format!(
             "index: {}. Cannot process account as {}",
             index,
-            std::any::type_name::<T>()
+            core::any::type_name::<T>()
         ))
     })?;
 
