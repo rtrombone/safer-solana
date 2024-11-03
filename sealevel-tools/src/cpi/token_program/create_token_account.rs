@@ -127,6 +127,7 @@ pub fn try_create_token_account<'a>(
     Ok(token_account)
 }
 
+/// Arguments for [invoke_initialize_account3_unchecked].
 pub struct InitializeAccount3<'a> {
     pub token_program_id: &'a Pubkey,
     pub account: &'a NoStdAccountInfo,
@@ -134,6 +135,12 @@ pub struct InitializeAccount3<'a> {
     pub owner: &'a Pubkey,
 }
 
+/// Initialize a token account with a specific mint and owner. This method initializes a token
+/// account for one of the Token programs. Only use this instruction if you have already created the
+/// token account via the System program.
+///
+/// NOTE: It is preferred to use [try_create_token_account] instead of this method because it will
+/// create the account and initialize it as a token account in one action.
 pub fn invoke_initialize_account3_unchecked(
     InitializeAccount3 {
         token_program_id,
@@ -146,7 +153,7 @@ pub fn invoke_initialize_account3_unchecked(
 }
 
 #[inline(always)]
-pub fn _invoke_initialize_account3_unchecked(
+fn _invoke_initialize_account3_unchecked(
     token_program_id: &Pubkey,
     account: &NoStdAccountInfo,
     mint: &NoStdAccountInfo,

@@ -3,15 +3,31 @@ use core::ops::Deref;
 use solana_nostd_entrypoint::NoStdAccountInfo;
 use solana_program::{
     bpf_loader_upgradeable::{UpgradeableLoaderState, ID},
+    program_error::ProgramError,
     pubkey::Pubkey,
 };
 
-use crate::account_info::NextEnumeratedAccountOptions;
+use crate::{account_info::NextEnumeratedAccountOptions, error::SealevelToolsError};
 
 use super::{Account, ProcessNextEnumeratedAccount, Program};
 
 /// Representing the BPF loader upgradeable program.
 pub struct BpfLoaderUpgradeableProgram<'a>(pub Program<'a>);
+
+impl<'a> TryFrom<&'a NoStdAccountInfo> for BpfLoaderUpgradeableProgram<'a> {
+    type Error = SealevelToolsError<'static>;
+
+    #[inline(always)]
+    fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
+        if account.owner() == &ID {
+            Ok(Self(Program::try_from(account)?))
+        } else {
+            Err(SealevelToolsError::AccountInfo(&[
+                "Expected BPF Loader Upgradeable program",
+            ]))
+        }
+    }
+}
 
 impl<'a> ProcessNextEnumeratedAccount<'a> for BpfLoaderUpgradeableProgram<'a> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
@@ -19,14 +35,6 @@ impl<'a> ProcessNextEnumeratedAccount<'a> for BpfLoaderUpgradeableProgram<'a> {
             key: Some(&ID),
             ..Program::NEXT_ACCOUNT_OPTIONS
         };
-
-    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
-        if account.key() == &ID {
-            Some(Self(Program(account)))
-        } else {
-            None
-        }
-    }
 }
 
 impl<'a> Deref for BpfLoaderUpgradeableProgram<'a> {
@@ -49,6 +57,39 @@ pub struct UpgradeableProgramData<'a, const WRITE: bool> {
 pub type UpgradeableReadOnlyProgramData<'a> = UpgradeableProgramData<'a, false>;
 pub type UpgradeableWritableProgramData<'a> = UpgradeableProgramData<'a, true>;
 
+impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for UpgradeableProgramData<'a, WRITE> {
+    type Error = ProgramError;
+
+    #[inline(always)]
+    fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
+        let account = Account::try_from(account)?;
+
+        if account.owner() == &ID {
+            let data = {
+                let data = account.try_borrow_data()?;
+                match bincode::deserialize(&data).map_err(|_| ProgramError::InvalidAccountData)? {
+                    UpgradeableLoaderState::ProgramData {
+                        slot,
+                        upgrade_authority_address,
+                    } => (slot, upgrade_authority_address),
+                    _ => {
+                        return Err(
+                            SealevelToolsError::AccountInfo(&["Expected program data"]).into()
+                        )
+                    }
+                }
+            };
+
+            Ok(Self { account, data })
+        } else {
+            Err(SealevelToolsError::AccountInfo(&[
+                "Expected BPF Loader Upgradeable program account",
+            ])
+            .into())
+        }
+    }
+}
+
 impl<'a, const WRITE: bool> UpgradeableProgramData<'a, WRITE> {
     /// The slot at which the program was last upgraded.
     pub fn slot(&self) -> u64 {
@@ -67,25 +108,4 @@ impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for UpgradeableProg
             owner: Some(&ID),
             ..Account::<'a, WRITE>::NEXT_ACCOUNT_OPTIONS
         };
-
-    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
-        if account.owner() == &ID {
-            let account = Account::checked_new(account)?;
-
-            let data = {
-                let data = account.try_borrow_data().ok()?;
-                match bincode::deserialize(&data).ok()? {
-                    UpgradeableLoaderState::ProgramData {
-                        slot,
-                        upgrade_authority_address,
-                    } => (slot, upgrade_authority_address),
-                    _ => return None,
-                }
-            };
-
-            Some(Self { account, data })
-        } else {
-            None
-        }
-    }
 }

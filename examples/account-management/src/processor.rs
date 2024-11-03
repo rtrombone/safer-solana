@@ -1,10 +1,10 @@
 use sealevel_tools::{
-    account::{AccountSerde, BorshAccountSchema},
+    account::BorshAccountSchema,
     account_info::{
         try_next_enumerated_account, BorshWritableAccount, NextEnumeratedAccountOptions, Payer,
         WritableAccount,
     },
-    cpi::system_program::{try_create_serialized_account, FailsafeCreateAccount},
+    cpi::system_program::{try_create_serialized_account, CreateSerializedAccount},
     pda::DeriveAddress,
 };
 use solana_nostd_entrypoint::NoStdAccountInfo;
@@ -32,11 +32,11 @@ pub fn init_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
     let thing = BorshAccountSchema(Thing { value });
 
     try_create_serialized_account(
-        FailsafeCreateAccount {
+        CreateSerializedAccount {
             payer: payer.as_cpi_authority(),
             to: new_thing_account.as_cpi_authority(Some(&[Thing::SEED, &[new_thing_bump]])),
-            space: thing.try_account_space()?,
             program_id: &ID,
+            space: None,
         },
         &thing,
     )?;

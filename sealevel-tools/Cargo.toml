@@ -1,12 +1,11 @@
 [package]
 name = "sealevel-tools"
-#description = "Tools for Solana program development"
+description = "Tools for Solana program development"
 keywords = [
     "solana",
     "solana-program",
     "spl"
 ]
-
 edition.workspace = true
 license.workspace = true
 readme = "README.md"
@@ -15,8 +14,13 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-default = ["borsh", "token"]
+alloc = []
 borsh = ["dep:borsh"]
+default = [
+    "alloc",
+    "borsh",
+    "token"
+]
 token = [
     "dep:spl-token",
     "dep:spl-token-2022"

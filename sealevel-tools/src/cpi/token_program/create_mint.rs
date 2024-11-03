@@ -118,6 +118,7 @@ pub fn try_create_mint<'b>(
     Ok(mint_account)
 }
 
+/// Arguments for [invoke_initialize_mint2_unchecked].
 pub struct InitializeMint2<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,
@@ -126,6 +127,11 @@ pub struct InitializeMint2<'a> {
     pub decimals: u8,
 }
 
+/// Initialize a mint account. This method initializes a mint account for one of the Token programs.
+/// Only use this instruction if you have already created the mint account via the System program.
+///
+/// NOTE: It is preferred to use [try_create_mint] instead of this method because it will create the
+/// account and initialize it as a mint in one action.
 pub fn invoke_initialize_mint2_unchecked(
     InitializeMint2 {
         token_program_id,
@@ -145,7 +151,7 @@ pub fn invoke_initialize_mint2_unchecked(
 }
 
 #[inline(always)]
-pub fn _invoke_initialize_mint2_unchecked(
+fn _invoke_initialize_mint2_unchecked(
     token_program_id: &Pubkey,
     mint: &NoStdAccountInfo,
     mint_authority: &Pubkey,

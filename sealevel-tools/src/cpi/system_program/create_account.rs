@@ -1,7 +1,4 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{
-    program_error::ProgramError, pubkey::Pubkey, rent::Rent, system_program::ID, sysvar::Sysvar,
-};
+use solana_program::{program_error::ProgramError, pubkey::Pubkey, rent::Rent, sysvar::Sysvar};
 
 use crate::{
     account::AccountSerde,
@@ -11,18 +8,15 @@ use crate::{
 
 /// Arguments for [try_failsafe_create_account].
 pub struct FailsafeCreateAccount<'a, 'b> {
-    /// The account that will pay for the rent. Either find the account by its key in
-    /// [Self::account_infos] (can be expensive) or use the provided [NoStdAccountInfo].
+    /// The account that will pay for the rent.
     ///
-    /// NOTE: Seeds for the [Self::payer] signer if the payer is a System account managed by the
-    /// program. Pass in [None] if the payer is passed in as a signer.
+    /// NOTE: Pass in `None` for [CpiAuthority::signer_seeds] if the payer is passed in as a signer.
     pub payer: CpiAuthority<'a, 'b>,
 
-    /// The account to be created.  Either find the account by its key in [Self::account_infos] (can
-    /// be expensive) or use the provided [NoStdAccountInfo].
+    /// The account to be created.
     ///
-    /// NOTE: Seeds for the [Self::to] signer if the account is a PDA. Pass in [None] if the account
-    /// is passed in as a random keypair.
+    /// NOTE: Pass in `None` for [CpiAuthority::signer_seeds] if the account is passed in as a
+    /// random keypair.
     pub to: CpiAuthority<'a, 'b>,
 
     /// The space to allocate for the account.
@@ -102,24 +96,46 @@ pub fn try_failsafe_create_account<'a>(
 
         if lamport_diff != 0 {
             // Transfer remaining lamports.
-            _invoke_transfer_unchecked(&payer, &to, lamport_diff);
+            super::_invoke_transfer_unchecked(&payer, &to, lamport_diff);
         }
 
         if space != 0 {
             // Allocate space.
-            _invoke_allocate_unchecked(&to, space);
+            super::_invoke_allocate_unchecked(&to, space);
         }
 
         // Assign to specified program.
-        _invoke_assign_unchecked(&to, program_id);
+        crate::cpi::system_program::_invoke_assign_unchecked(&to, program_id);
     }
 
     // We know that this account was writable, so we are safe to instantiate it like this.
     Ok(Account(to.account))
 }
 
-/// Create a new data account and write borsh-serialized data to it. If the account requires a
-/// discriminator, it will be serialized before this data.
+/// Arguments for [try_failsafe_create_account].
+pub struct CreateSerializedAccount<'a, 'b> {
+    /// The account that will pay for the rent.
+    ///
+    /// NOTE: Pass in `None` for [CpiAuthority::signer_seeds] if the payer is passed in as a signer.
+    pub payer: CpiAuthority<'a, 'b>,
+
+    /// The account to be created.
+    ///
+    /// NOTE: Pass in `None` for [CpiAuthority::signer_seeds] if the account is passed in as a
+    /// random keypair.
+    pub to: CpiAuthority<'a, 'b>,
+
+    /// The program to assign the account to.
+    pub program_id: &'b Pubkey,
+
+    /// The space to allocate for the account. If not specified, the space will be determined by
+    /// [AccountSerde::try_account_space].
+    pub space: Option<u64>,
+}
+
+/// Create a new data account and serialize data to it using the account's implemented
+/// [AccountSerde], which includes its discriminator. This method uses [try_failsafe_create_account]
+/// to create the account and then serializes the data to it.
 ///
 /// ### Example
 ///
@@ -131,7 +147,7 @@ pub fn try_failsafe_create_account<'a>(
 ///         try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, Program,
 ///         WritableAccount,
 ///     },
-///     cpi::system_program::{try_create_serialized_account, FailsafeCreateAccount},
+///     cpi::system_program::{try_create_serialized_account, CreateSerializedAccount},
 ///     discriminator::{Discriminate, Discriminator},
 /// };
 /// use solana_nostd_entrypoint::NoStdAccountInfo;
@@ -173,11 +189,11 @@ pub fn try_failsafe_create_account<'a>(
 ///     let thing = BorshAccountSchema(Thing { data: 420 });
 ///
 ///     try_create_serialized_account(
-///         FailsafeCreateAccount {
+///         CreateSerializedAccount {
 ///             payer: payer.as_cpi_authority(),
 ///             to: new_account.as_cpi_authority(Some(&[b"thing", &[new_thing_bump]])),
-///             space: thing.try_account_space()?,
 ///             program_id,
+///             space: None,
 ///         },
 ///         &thing,
 ///     )?;
@@ -186,10 +202,25 @@ pub fn try_failsafe_create_account<'a>(
 /// }
 /// ```
 pub fn try_create_serialized_account<'a, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>(
-    args: super::FailsafeCreateAccount<'_, 'a>,
+    CreateSerializedAccount {
+        payer,
+        to,
+        space,
+        program_id,
+    }: CreateSerializedAccount<'_, 'a>,
     account_data: &T,
 ) -> Result<Account<'a, true>, ProgramError> {
-    let account = super::try_failsafe_create_account(args)?;
+    let space = match space {
+        Some(space) => space,
+        None => account_data.try_account_space()?,
+    };
+
+    let account = super::try_failsafe_create_account(FailsafeCreateAccount {
+        payer,
+        to,
+        space,
+        program_id,
+    })?;
 
     {
         let mut data = account.try_borrow_mut_data()?;
@@ -199,6 +230,7 @@ pub fn try_create_serialized_account<'a, const DISC_LEN: usize, T: AccountSerde<
     Ok(account)
 }
 
+/// Arguments for [invoke_create_account_unchecked].
 pub struct CreateAccount<'a, 'b> {
     pub from: CpiAuthority<'a, 'b>,
     pub to: CpiAuthority<'a, 'b>,
@@ -207,6 +239,14 @@ pub struct CreateAccount<'a, 'b> {
     pub owner: &'b Pubkey,
 }
 
+/// Invokes the create account instruction on the System program, which creates a new account owned
+/// by a specified program. Only use this instruction if you are certain the account does not have
+/// any lamports on it.
+///
+/// NOTE: It is preferred to use [try_failsafe_create_account] instead of this method because it
+/// performs a check to see if the account already has lamports before invoking this instruction
+/// (otherwise, it will top up the account to the required rent, allocate and assign the account to
+/// the program).
 pub fn invoke_create_account_unchecked(
     CreateAccount {
         from,
@@ -217,57 +257,6 @@ pub fn invoke_create_account_unchecked(
     }: CreateAccount,
 ) {
     _invoke_create_account_unchecked(&from, &to, lamports, space, owner);
-}
-
-pub struct Assign<'a, 'b> {
-    pub to: CpiAuthority<'a, 'b>,
-    pub owner: &'b Pubkey,
-}
-
-pub fn invoke_assign_unchecked(Assign { to, owner }: Assign) {
-    _invoke_assign_unchecked(&to, owner);
-}
-
-pub struct Transfer<'a, 'b> {
-    pub from: CpiAuthority<'a, 'b>,
-    pub to: &'b NoStdAccountInfo,
-    pub lamports: u64,
-}
-
-pub fn invoke_transfer_unchecked(Transfer { from, to, lamports }: Transfer) {
-    _invoke_transfer_unchecked(
-        &from,
-        &CpiAuthority {
-            account: to,
-            signer_seeds: None,
-        },
-        lamports,
-    );
-}
-
-pub struct Allocate<'a, 'b> {
-    pub account: CpiAuthority<'a, 'b>,
-    pub space: u64,
-}
-
-pub fn invoke_allocate_unchecked(Allocate { account, space }: Allocate) {
-    _invoke_allocate_unchecked(&account, space);
-}
-
-#[inline(always)]
-fn _invoke_signed_from_to_unchecked<const ACCOUNT_LEN: usize, const DATA_LEN: usize>(
-    precursor: CpiPrecursor<ACCOUNT_LEN, DATA_LEN>,
-    from_signer_seeds: Option<&[&[u8]]>,
-    to_signer_seeds: Option<&[&[u8]]>,
-) {
-    match (from_signer_seeds, to_signer_seeds) {
-        (Some(from_signer_seeds), Some(to_signer_seeds)) => {
-            precursor.invoke_signed_unchecked(&[from_signer_seeds, to_signer_seeds])
-        }
-        (None, Some(to_signer_seeds)) => precursor.invoke_signed_unchecked(&[to_signer_seeds]),
-        (Some(from_signer_seeds), None) => precursor.invoke_signed_unchecked(&[from_signer_seeds]),
-        (None, None) => precursor.invoke_signed_unchecked(&[]),
-    };
 }
 
 #[inline(always)]
@@ -289,9 +278,9 @@ fn _invoke_create_account_unchecked(
     instruction_data[12..20].copy_from_slice(&space.to_le_bytes());
     instruction_data[20..52].copy_from_slice(&owner.to_bytes());
 
-    _invoke_signed_from_to_unchecked(
+    super::_invoke_signed_from_to_unchecked(
         CpiPrecursor {
-            program_id: &ID,
+            program_id: &super::ID,
             accounts: [from.to_meta_c(), to.to_meta_c_signer()],
             instruction_data,
             infos: [from.to_info_c(), to.to_info_c()],
@@ -299,70 +288,4 @@ fn _invoke_create_account_unchecked(
         from.signer_seeds,
         to.signer_seeds,
     );
-}
-
-#[inline(always)]
-fn _invoke_assign_unchecked(to: &CpiAuthority, owner: &Pubkey) {
-    const IX_DATA_LEN: usize = 4 // selector
-        + 32; // owner
-
-    let mut instruction_data = [0; IX_DATA_LEN];
-
-    // Assign selector == 1.
-    instruction_data[0] = 1;
-    instruction_data[4..36].copy_from_slice(&owner.to_bytes());
-
-    CpiPrecursor {
-        program_id: &ID,
-        accounts: [to.to_meta_c_signer()],
-        instruction_data,
-        infos: [to.to_info_c()],
-    }
-    .invoke_signed_unchecked(&[to.signer_seeds.unwrap_or_default()]);
-}
-
-#[inline(always)]
-fn _invoke_transfer_unchecked(from: &CpiAuthority, to: &CpiAuthority, lamports: u64) {
-    const IX_DATA_LEN: usize = 4 // selector
-        + 8; // lamports
-
-    let mut instruction_data = [0; IX_DATA_LEN];
-
-    // Transfer selector == 2.
-    instruction_data[0] = 2;
-    instruction_data[4..12].copy_from_slice(&lamports.to_le_bytes());
-
-    let from_account = from.account;
-    let to_account = to.account;
-
-    _invoke_signed_from_to_unchecked(
-        CpiPrecursor {
-            program_id: &ID,
-            accounts: [from_account.to_meta_c(), to_account.to_meta_c_signer()],
-            instruction_data,
-            infos: [from_account.to_info_c(), to_account.to_info_c()],
-        },
-        from.signer_seeds,
-        to.signer_seeds,
-    );
-}
-
-#[inline(always)]
-fn _invoke_allocate_unchecked(account: &CpiAuthority, space: u64) {
-    const IX_DATA_LEN: usize = 4 // selector
-        + 8; // space
-
-    let mut instruction_data = [0; IX_DATA_LEN];
-
-    // Allocate selector == 8.
-    instruction_data[0] = 8;
-    instruction_data[4..12].copy_from_slice(&space.to_le_bytes());
-
-    CpiPrecursor {
-        program_id: &ID,
-        accounts: [account.to_meta_c_signer()],
-        instruction_data,
-        infos: [account.to_info_c()],
-    }
-    .invoke_signed_unchecked(&[account.signer_seeds.unwrap_or_default()]);
 }

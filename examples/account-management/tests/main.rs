@@ -42,7 +42,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 3_693);
+    assert_eq!(tx_meta.compute_units_consumed, 3_683);
 
     // Check the new_thing account.
     let account_data = banks_client
@@ -79,7 +79,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 268);
+    assert_eq!(tx_meta.compute_units_consumed, 264);
 
     // Check the thing account.
     let account_data = banks_client
@@ -122,7 +122,7 @@ async fn test_thing() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 456);
+    assert_eq!(tx_meta.compute_units_consumed, 451);
 
     let closed_thing = banks_client.get_account(new_thing_addr).await.unwrap();
     assert!(closed_thing.is_none());
@@ -173,7 +173,7 @@ async fn test_init_thing_already_having_lamports() {
         .metadata
         .unwrap();
     assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 6_279);
+    assert_eq!(tx_meta.compute_units_consumed, 6_272);
 
     // Check the new_thing account.
     let account_data = banks_client

@@ -1,23 +1,25 @@
 //! Error types for Sealevel tools.
 
-use alloc::{format, string::String};
-
-use solana_program::{msg, program_error::ProgramError};
+use solana_program::{log::sol_log, program_error::ProgramError};
 
 #[derive(Debug)]
-pub enum SealevelToolsError {
-    /// Error relating to the [account_info](crate::account_info) module. Custom program error code
-    /// reflected by [ACCOUNT_INFO](Self::ACCOUNT_INFO).
-    //#[error("Account info: {0}")]
-    AccountInfo(String),
+pub enum SealevelToolsError<'a> {
+    /// Error relating to the [`account_info` module]. Custom program error code
+    /// reflected by [ACCOUNT_INFO].
+    ///
+    /// [`account_info` module]: crate::account_info
+    /// [ACCOUNT_INFO]: Self::ACCOUNT_INFO
+    AccountInfo(&'a [&'a str]),
 
-    /// Error relating to [cpi](crate::cpi) module. Custom program error code reflected by
-    /// [CPI](Self::CPI).
-    //#[error("CPI: {0}: {1}")]
-    Cpi(&'static str, String),
+    /// Error relating to [`cpi` module]. Custom program error code reflected by
+    /// [CPI].
+    ///
+    /// [`cpi` module]: crate::cpi
+    /// [CPI]: Self::CPI
+    Cpi(&'a [&'a str]),
 }
 
-impl SealevelToolsError {
+impl<'a> SealevelToolsError<'a> {
     pub const ACCOUNT_INFO: u32 = u32::from_be_bytes(
         crate::discriminator::Discriminator::Sha2(b"sealevel_tools::account_info").to_bytes(),
     );
@@ -26,17 +28,21 @@ impl SealevelToolsError {
     );
 }
 
-impl From<SealevelToolsError> for ProgramError {
+impl<'a> From<SealevelToolsError<'a>> for ProgramError {
     fn from(e: SealevelToolsError) -> ProgramError {
-        match e {
+        let (msgs, code) = match e {
             SealevelToolsError::AccountInfo(err) => {
-                msg!("Custom error: Account info: {}", err);
-                ProgramError::Custom(SealevelToolsError::ACCOUNT_INFO)
+                sol_log("Custom error: AccountInfo");
+                (err, SealevelToolsError::ACCOUNT_INFO)
             }
-            SealevelToolsError::Cpi(module, err) => {
-                msg!("Custom error: CPI: {}, {}", module, err);
-                ProgramError::Custom(SealevelToolsError::CPI)
+            SealevelToolsError::Cpi(err) => {
+                sol_log("Custom error: CPI");
+                (err, SealevelToolsError::CPI)
             }
-        }
+        };
+
+        msgs.iter().for_each(|err| sol_log(err));
+
+        ProgramError::Custom(code)
     }
 }

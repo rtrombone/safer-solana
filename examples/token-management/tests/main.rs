@@ -32,7 +32,7 @@ async fn test_init_mint_token_program() {
     // NOTE: Mint bump is 252, which requires 3 iterations to find a mint key. Each iteration costs
     // 1,500 CU. So, the total cost is 4,500 CU for this PDA.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 3 * 1_500;
-    assert_eq!(adjusted_compute_units_consumed, 8_273);
+    assert_eq!(adjusted_compute_units_consumed, 8_266);
 }
 
 #[tokio::test]
@@ -54,7 +54,7 @@ async fn test_init_mint_token_2022_program() {
     // NOTE: Mint bump is 252, which requires 3 iterations to find a mint key. Each iteration costs
     // 1,500 CU. So, the total cost is 4,500 CU for this PDA.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 3 * 1_500;
-    assert_eq!(adjusted_compute_units_consumed, 8_644);
+    assert_eq!(adjusted_compute_units_consumed, 8_636);
 }
 
 #[tokio::test]
@@ -77,7 +77,7 @@ async fn test_init_mint_token_program_and_freeze_authority() {
     // NOTE: Mint bump is 252, which requires 3 iterations to find a mint key. Each iteration costs
     // 1,500 CU. So, the total cost is 4,500 CU for this PDA.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 3 * 1_500;
-    assert_eq!(adjusted_compute_units_consumed, 8_588);
+    assert_eq!(adjusted_compute_units_consumed, 8_582);
 }
 
 #[tokio::test]
@@ -100,7 +100,7 @@ async fn test_init_mint_token_2022_program_and_freeze_authority() {
     // NOTE: Mint bump is 252, which requires 3 iterations to find a mint key. Each iteration costs
     // 1,500 CU. So, the total cost is 4,500 CU for this PDA.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 3 * 1_500;
-    assert_eq!(adjusted_compute_units_consumed, 8_945);
+    assert_eq!(adjusted_compute_units_consumed, 8_938);
 }
 
 async fn set_up(

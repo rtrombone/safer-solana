@@ -59,6 +59,8 @@ pub fn try_write_borsh_data<const DISC_LEN: usize>(
     account_data.serialize(writer)
 }
 
+/// Wrapper around a type implementing [BorshDeserialize] and [BorshSerialize] with an assumed
+/// discriminator (via [Discriminate]). If there is no discriminator, use DISC_LEN == 0.
 pub struct BorshAccountSchema<
     const DISC_LEN: usize,
     T: Discriminate<DISC_LEN> + BorshDeserialize + BorshSerialize,
@@ -120,6 +122,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 #[cfg(test)]
 mod test {
     use alloc::vec;

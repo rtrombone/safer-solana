@@ -24,13 +24,12 @@ use super::{try_close_account, try_next_enumerated_account_info, NextEnumeratedA
 /// Trait for processing the next enumerated [NoStdAccountInfo] with default options. These options can
 /// be overridden in the [try_next_enumerated_account] method (like checking for a specific key or
 /// owner).
-pub trait ProcessNextEnumeratedAccount<'a>: Sized {
+pub trait ProcessNextEnumeratedAccount<'a>: TryFrom<&'a NoStdAccountInfo>
+where
+    ProgramError: From<<Self as TryFrom<&'a NoStdAccountInfo>>::Error>,
+{
     /// Default options for processing the next enumerated account.
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static>;
-
-    /// Only return `Some(Self)` if the account meets the criteria specified by the struct
-    /// implementing this trait.
-    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self>;
 }
 
 /// Generic wrapper for a data account that can be read from or written to (specified by `WRITE`
@@ -49,6 +48,25 @@ impl<'a> Account<'a, true> {
     }
 }
 
+impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for Account<'a, WRITE> {
+    type Error = SealevelToolsError<'static>;
+
+    #[inline(always)]
+    fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
+        if account.is_writable() == WRITE {
+            Ok(Self(account))
+        } else if WRITE {
+            Err(SealevelToolsError::AccountInfo(&[
+                "Cannot process account as writable",
+            ]))
+        } else {
+            Err(SealevelToolsError::AccountInfo(&[
+                "Cannot process account as read-only",
+            ]))
+        }
+    }
+}
+
 impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for Account<'a, WRITE> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         NextEnumeratedAccountOptions {
@@ -61,15 +79,6 @@ impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for Account<'a, WRI
             is_writable: Some(WRITE),
             executable: None,
         };
-
-    #[inline(always)]
-    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
-        if account.is_writable() == WRITE {
-            Some(Self(account))
-        } else {
-            None
-        }
-    }
 }
 
 impl<'a, const WRITE: bool> Deref for Account<'a, WRITE> {
@@ -95,6 +104,21 @@ impl<'b, const WRITE: bool> Account<'b, WRITE> {
 /// Generic wrapper for a program account.
 pub struct Program<'a>(pub(crate) &'a NoStdAccountInfo);
 
+impl<'a> TryFrom<&'a NoStdAccountInfo> for Program<'a> {
+    type Error = SealevelToolsError<'static>;
+
+    #[inline(always)]
+    fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
+        if account.executable() {
+            Ok(Self(account))
+        } else {
+            Err(SealevelToolsError::AccountInfo(&[
+                "Cannot process account as executable",
+            ]))
+        }
+    }
+}
+
 impl<'a> ProcessNextEnumeratedAccount<'a> for Program<'a> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         NextEnumeratedAccountOptions {
@@ -107,15 +131,6 @@ impl<'a> ProcessNextEnumeratedAccount<'a> for Program<'a> {
             is_writable: None,
             executable: Some(true),
         };
-
-    #[inline(always)]
-    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
-        if account.executable() {
-            Some(Self(account))
-        } else {
-            None
-        }
-    }
 }
 
 impl<'a> Deref for Program<'a> {
@@ -133,6 +148,25 @@ pub struct Signer<'a, const WRITE: bool>(pub(crate) &'a NoStdAccountInfo);
 pub type Authority<'a> = Signer<'a, false>;
 pub type Payer<'a> = Signer<'a, true>;
 
+impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for Signer<'a, WRITE> {
+    type Error = SealevelToolsError<'static>;
+
+    #[inline(always)]
+    fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
+        if account.is_signer() && account.is_writable() == WRITE {
+            Ok(Self(account))
+        } else if WRITE {
+            Err(SealevelToolsError::AccountInfo(&[
+                "Cannot process account as writable signer",
+            ]))
+        } else {
+            Err(SealevelToolsError::AccountInfo(&[
+                "Cannot process account as read-only signer",
+            ]))
+        }
+    }
+}
+
 impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for Signer<'a, WRITE> {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         NextEnumeratedAccountOptions {
@@ -146,15 +180,6 @@ impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for Signer<'a, WRIT
             // Can a deployed program's keypair still be used as a signer?
             executable: Some(false),
         };
-
-    #[inline(always)]
-    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
-        if account.is_signer() && account.is_writable() == WRITE {
-            Some(Self(account))
-        } else {
-            None
-        }
-    }
 }
 
 impl<'a, const WRITE: bool> Deref for Signer<'a, WRITE> {
@@ -174,11 +199,39 @@ impl<'b, const WRITE: bool> Signer<'b, WRITE> {
     }
 }
 
-/// Wrapper for [Account] that deserializes data with [Pack]. This type warehouses the
-/// deserialized data implementing [IsInitialized] and [Pack].
+/// Wrapper for [Account] that deserializes data with [AccountSerde].
 pub struct DataAccount<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> {
     pub account: Account<'a, WRITE>,
     pub data: T,
+}
+
+impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
+    TryFrom<Account<'a, WRITE>> for DataAccount<'a, WRITE, DISC_LEN, T>
+{
+    type Error = ProgramError;
+
+    #[inline(always)]
+    fn try_from(account: Account<'a, WRITE>) -> Result<Self, Self::Error> {
+        let data = {
+            let data = account.try_borrow_data()?;
+            T::try_deserialize_data(&mut &data[..])?
+        };
+
+        Ok(Self { account, data })
+    }
+}
+
+impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
+    TryFrom<&'a NoStdAccountInfo> for DataAccount<'a, WRITE, DISC_LEN, T>
+{
+    type Error = ProgramError;
+
+    #[inline(always)]
+    fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
+        let account = Account::try_from(account)?;
+
+        account.try_into()
+    }
 }
 
 impl<'a, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> DataAccount<'a, true, DISC_LEN, T> {
@@ -192,31 +245,10 @@ impl<'a, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> DataAccount<'a, true,
 }
 
 impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
-    TryFrom<Account<'a, WRITE>> for DataAccount<'a, WRITE, DISC_LEN, T>
-{
-    type Error = ProgramError;
-
-    fn try_from(account: Account<'a, WRITE>) -> Result<Self, Self::Error> {
-        let data = {
-            let data = account.try_borrow_data()?;
-            T::try_deserialize_data(&mut &data[..])?
-        };
-
-        Ok(Self { account, data })
-    }
-}
-
-impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
     ProcessNextEnumeratedAccount<'a> for DataAccount<'a, WRITE, DISC_LEN, T>
 {
     const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
         Account::<'a, WRITE>::NEXT_ACCOUNT_OPTIONS;
-
-    fn checked_new(account: &'a NoStdAccountInfo) -> Option<Self> {
-        let account = Account::checked_new(account)?;
-
-        Self::try_from(account).ok()
-    }
 }
 
 /// Like [try_next_enumerated_account_info], but processes the account as a specific type
@@ -275,6 +307,7 @@ pub fn try_next_enumerated_account<'a, 'b, T>(
 ) -> Result<(usize, T), ProgramError>
 where
     T: ProcessNextEnumeratedAccount<'b>,
+    ProgramError: From<<T as TryFrom<&'b NoStdAccountInfo>>::Error>,
 {
     let (index, account) = try_next_enumerated_account_info(
         iter,
@@ -290,13 +323,7 @@ where
         },
     )?;
 
-    let processed = T::checked_new(account).ok_or_else(|| {
-        SealevelToolsError::AccountInfo(alloc::format!(
-            "index: {}. Cannot process account as {}",
-            index,
-            core::any::type_name::<T>()
-        ))
-    })?;
+    let processed = T::try_from(account)?;
 
     Ok((index, processed))
 }

@@ -1,12 +1,13 @@
+//! Account serialization and deserialization utilities.
+
 #[cfg(feature = "borsh")]
 mod borsh;
 
-use core::{
-    borrow::Borrow,
-    ops::{Deref, DerefMut},
-};
+use core::ops::{Deref, DerefMut};
 
-use alloc::{borrow::ToOwned, boxed::Box};
+#[cfg(feature = "alloc")]
+use core::borrow::Borrow;
+
 #[cfg(feature = "borsh")]
 pub use borsh::*;
 
@@ -105,10 +106,11 @@ pub trait AccountSerde<const DISC_LEN: usize>: Sized + Discriminate<DISC_LEN> {
     }
 }
 
-impl<const DISC_LEN: usize, T, U> AccountSerde<DISC_LEN> for Box<T>
+#[cfg(feature = "alloc")]
+impl<const DISC_LEN: usize, T, U> AccountSerde<DISC_LEN> for alloc::boxed::Box<T>
 where
-    U: Into<Box<T>> + Borrow<T>,
-    T: AccountSerde<DISC_LEN> + ToOwned<Owned = U> + ?Sized,
+    U: Into<alloc::boxed::Box<T>> + Borrow<T>,
+    T: AccountSerde<DISC_LEN> + alloc::borrow::ToOwned<Owned = U> + ?Sized,
     T::Owned: AccountSerde<DISC_LEN>,
 {
     #[inline(always)]
@@ -127,6 +129,7 @@ where
     }
 }
 
+/// Wrapper around a type implementing [Pack] and [IsInitialized].
 pub struct PackAccountSchema<T: Pack + IsInitialized>(pub T);
 
 impl<T: Pack + IsInitialized> Discriminate<0> for PackAccountSchema<T> {

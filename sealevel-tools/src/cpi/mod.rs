@@ -33,11 +33,12 @@ impl<'a, 'b> Deref for CpiAuthority<'a, 'b> {
     }
 }
 
+/// Setup to invoke a cross-program instruction.
 pub struct CpiPrecursor<'a, const ACCOUNT_LEN: usize, const DATA_LEN: usize> {
-    program_id: &'a Pubkey,
-    accounts: [AccountMetaC; ACCOUNT_LEN],
-    instruction_data: [u8; DATA_LEN],
-    infos: [AccountInfoC; ACCOUNT_LEN],
+    pub program_id: &'a Pubkey,
+    pub accounts: [AccountMetaC; ACCOUNT_LEN],
+    pub instruction_data: [u8; DATA_LEN],
+    pub infos: [AccountInfoC; ACCOUNT_LEN],
 }
 
 impl<'a, const ACCOUNT_LEN: usize, const DATA_LEN: usize> CpiPrecursor<'a, ACCOUNT_LEN, DATA_LEN> {
@@ -61,6 +62,8 @@ impl<'a, const ACCOUNT_LEN: usize, const DATA_LEN: usize> CpiPrecursor<'a, ACCOU
     }
 }
 
+/// Similar to [invoke_signed](solana_program::program::invoke_signed), but performs a lower level
+/// call to the runtime and does not try to perform any account borrows.
 pub fn invoke_signed_unchecked(
     instruction: &InstructionC,
     infos: &[AccountInfoC],

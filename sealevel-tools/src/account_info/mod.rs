@@ -6,10 +6,11 @@ mod close;
 pub use account::*;
 pub use close::*;
 
+#[cfg(feature = "alloc")]
 use alloc::format;
 
 use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{msg, program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::SealevelToolsError;
 
@@ -108,54 +109,67 @@ where
 
     if let Some(key) = key {
         if account.key() != key {
-            return Err(SealevelToolsError::AccountInfo(format!(
-                "index: {}. Found key={}, expected={}",
-                index,
-                account.key(),
-                key
-            ))
+            #[cfg(feature = "alloc")]
+            return Err(SealevelToolsError::AccountInfo(&[
+                format!("Account key mismatch at index {}...", index).as_str(),
+                format!("  Found: {}", account.key()).as_str(),
+                format!("  Expected: {}", key).as_str(),
+            ])
             .into());
+            #[cfg(not(feature = "alloc"))]
+            return Err(
+                SealevelToolsError::AccountInfo(&["Account does not match expected key"]).into(),
+            );
         }
     }
 
     if let Some(any_of_keys) = any_of_keys {
         if !any_of_keys.contains(&account.key()) {
-            return Err(SealevelToolsError::AccountInfo(format!(
-                "index: {}. Found key={}, expected one of {:?}",
-                index,
-                account.key(),
-                any_of_keys
-            ))
+            #[cfg(feature = "alloc")]
+            return Err(SealevelToolsError::AccountInfo(&[
+                format!("Account key mismatch at index {}...", index).as_str(),
+                format!("  Found: {}", account.key()).as_str(),
+                format!("  Expected one of: {:?}", any_of_keys).as_str(),
+            ])
+            .into());
+            #[cfg(not(feature = "alloc"))]
+            return Err(SealevelToolsError::AccountInfo(&[
+                "Account does not match one of expected keys",
+            ])
             .into());
         }
     }
 
     if let Some(owner) = owner {
         if account.owner() != owner {
-            msg!(
-                "ProgramError caused by account index={}. Found owner={}, expected={}.",
-                index,
-                account.owner(),
-                owner,
-            );
-            return Err(SealevelToolsError::AccountInfo(format!(
-                "index: {}. Found owner={}, expected={}",
-                index,
-                account.owner(),
-                owner
-            ))
+            #[cfg(feature = "alloc")]
+            return Err(SealevelToolsError::AccountInfo(&[
+                format!("Account owner mismatch at index {}...", index).as_str(),
+                format!("  Found: {}", account.owner()).as_str(),
+                format!("  Expected: {:?}", owner).as_str(),
+            ])
+            .into());
+            #[cfg(not(feature = "alloc"))]
+            return Err(SealevelToolsError::AccountInfo(&[
+                "Account does not match expected owner",
+            ])
             .into());
         }
     }
 
     if let Some(any_of_owners) = any_of_owners {
         if !any_of_owners.contains(&account.owner()) {
-            return Err(SealevelToolsError::AccountInfo(format!(
-                "index: {}. Found owner={}, expected one of {:?}",
-                index,
-                account.owner(),
-                any_of_owners
-            ))
+            #[cfg(feature = "alloc")]
+            return Err(SealevelToolsError::AccountInfo(&[
+                format!("Account owner mismatch at index {}...", index).as_str(),
+                format!("  Found: {}", account.owner()).as_str(),
+                format!("  Expected one of: {:?}", any_of_owners).as_str(),
+            ])
+            .into());
+            #[cfg(not(feature = "alloc"))]
+            return Err(SealevelToolsError::AccountInfo(&[
+                "Account does not match one of expected owners",
+            ])
             .into());
         }
     }
@@ -164,43 +178,98 @@ where
         let (expected_key, _) = Pubkey::find_program_address(seeds, owner);
 
         if *account.key() != expected_key {
-            return Err(SealevelToolsError::AccountInfo(format!(
-                "index: {}. Found key={}, derived={}",
-                index,
-                account.key(),
-                expected_key
-            ))
+            #[cfg(feature = "alloc")]
+            return Err(SealevelToolsError::AccountInfo(&[
+                format!("PDA key mismatch at index {}...", index).as_str(),
+                format!("  Found: {}", account.key()).as_str(),
+                format!("  Expected: {}", expected_key).as_str(),
+            ])
             .into());
+            #[cfg(not(feature = "alloc"))]
+            return Err(
+                SealevelToolsError::AccountInfo(&["Account does not match derived key"]).into(),
+            );
         }
     }
 
     if let Some(is_signer) = is_signer {
         if account.is_signer() != is_signer {
-            return Err(SealevelToolsError::AccountInfo(format!(
-                "index: {}. Exected is_signer={}",
-                index, is_signer
-            ))
-            .into());
+            #[cfg(feature = "alloc")]
+            return if is_signer {
+                Err(SealevelToolsError::AccountInfo(&[format!(
+                    "Expected signer at index {}",
+                    index
+                )
+                .as_str()])
+                .into())
+            } else {
+                Err(SealevelToolsError::AccountInfo(&[format!(
+                    "Did not expect signer at index {}",
+                    index
+                )
+                .as_str()])
+                .into())
+            };
+            #[cfg(not(feature = "alloc"))]
+            return if is_signer {
+                Err(SealevelToolsError::AccountInfo(&["Expected signer"]).into())
+            } else {
+                Err(SealevelToolsError::AccountInfo(&["Did not expect signer"]).into())
+            };
         }
     }
 
     if let Some(is_writable) = is_writable {
         if account.is_writable() != is_writable {
-            return Err(SealevelToolsError::AccountInfo(format!(
-                "index: {}. Expected is_writable={}",
-                index, is_writable
-            ))
-            .into());
+            #[cfg(feature = "alloc")]
+            return if is_writable {
+                Err(SealevelToolsError::AccountInfo(&[format!(
+                    "Expected writable at index {}",
+                    index
+                )
+                .as_str()])
+                .into())
+            } else {
+                Err(SealevelToolsError::AccountInfo(&[format!(
+                    "Expected read-only at index {}",
+                    index
+                )
+                .as_str()])
+                .into())
+            };
+            #[cfg(not(feature = "alloc"))]
+            return if is_writable {
+                Err(SealevelToolsError::AccountInfo(&["Expected writable"]).into())
+            } else {
+                Err(SealevelToolsError::AccountInfo(&["Expected read-only"]).into())
+            };
         }
     }
 
     if let Some(executable) = executable {
-        if executable != account.executable() {
-            return Err(SealevelToolsError::AccountInfo(format!(
-                "index: {}. Expected executable={}",
-                index, executable
-            ))
-            .into());
+        if account.executable() != executable {
+            #[cfg(feature = "alloc")]
+            return if executable {
+                Err(SealevelToolsError::AccountInfo(&[format!(
+                    "Expected executable at index {}",
+                    index
+                )
+                .as_str()])
+                .into())
+            } else {
+                Err(SealevelToolsError::AccountInfo(&[format!(
+                    "Did not expect executable at index {}",
+                    index
+                )
+                .as_str()])
+                .into())
+            };
+            #[cfg(not(feature = "alloc"))]
+            return if executable {
+                Err(SealevelToolsError::AccountInfo(&["Expected executable"]).into())
+            } else {
+                Err(SealevelToolsError::AccountInfo(&["Did not expect executable"]).into())
+            };
         }
     }
 

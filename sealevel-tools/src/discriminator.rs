@@ -1,8 +1,7 @@
 //! Discriminator generation for program accounts, events, and instructions.
 
+#[cfg(feature = "alloc")]
 use core::borrow::Borrow;
-
-use alloc::{borrow::ToOwned, boxed::Box};
 
 /// Discriminator generated either by user-defined or by specific hashing function (where total hash
 /// output is 256 bits). These discriminators can be used for discriminating against serialized
@@ -101,10 +100,11 @@ pub trait Discriminate<const LEN: usize> {
     const DISCRIMINATOR: [u8; LEN];
 }
 
-impl<const LEN: usize, T, U> Discriminate<LEN> for Box<T>
+#[cfg(feature = "alloc")]
+impl<const LEN: usize, T, U> Discriminate<LEN> for alloc::boxed::Box<T>
 where
-    U: Into<Box<T>> + Borrow<T>,
-    T: Discriminate<LEN> + ToOwned<Owned = U> + ?Sized,
+    U: Into<alloc::boxed::Box<T>> + Borrow<T>,
+    T: Discriminate<LEN> + alloc::borrow::ToOwned<Owned = U> + ?Sized,
     T::Owned: Discriminate<LEN>,
 {
     const DISCRIMINATOR: [u8; LEN] = T::DISCRIMINATOR;
