@@ -1,4 +1,5 @@
-[<img alt="license" src="https://img.shields.io/github/license/rtrombone/safer-solana?logo=github" height="20">](https://crates.io/sealevel-tools)[<img alt="crates.io" src="https://img.shields.io/crates/v/sealevel-tools?logo=rust" height="20">](https://crates.io/sealevel-tools)
+[<img alt="license" src="https://img.shields.io/github/license/rtrombone/safer-solana?logo=github" height="20">](https://github.com/rtrombone/safer-solana/blob/main/LICENSE)
+[<img alt="crates.io" src="https://img.shields.io/crates/v/sealevel-tools?logo=rust" height="20">](https://crates.io/crates/sealevel-tools)
 [<img alt="docs.rs" src="https://img.shields.io/docsrs/sealevel-tools?logo=rust" height="20">](https://docs.rs/sealevel-tools)
 
 # Sealevel Tools
@@ -33,7 +34,7 @@ default = [
 To disable these defaults (e.g. using a heapless environment via [noalloc_allocator]), use
 `default-features = false` in your Cargo.toml and add the features you need for your program:
 ```toml
-sealevel-tools = { version = "0.3.0", default-features = false, features = ["token"] }
+sealevel-tools = { version = "0.3.1", default-features = false, features = ["token"] }
 ```
 
 ### `features = ["alloc"]`

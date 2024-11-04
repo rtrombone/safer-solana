@@ -242,15 +242,19 @@
 //! expect). In the above example, we are asserting that the new `Thing` account is a
 //! [WritableAccount], whose const bool value says that it is a writable account.
 //!
-//! If you desire more structure in your life, encapsulate the account plucking logic in a struct:
+//! If you desire more structure in your life, encapsulate the account plucking logic in a struct
+//! via the [TakeAccounts] trait:
 //!
 //! ```
 //! # use sealevel_tools::account_info::{
-//! #   try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, WritableAccount
+//! #   try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, TakeAccounts,
+//! #   WritableAccount
 //! # };
 //! # use solana_nostd_entrypoint::NoStdAccountInfo;
 //! # use solana_program::{program_error::ProgramError, pubkey::Pubkey};
-//!#
+//! #
+//! # solana_program::declare_id!("Examp1eThing1111111111111111111111111111111");
+//! #
 //! struct AddThingAccounts<'a> {
 //!     payer: (usize, Payer<'a>),
 //!     new_thing: (
@@ -260,20 +264,17 @@
 //!     ),
 //! }
 //!
-//! impl<'a> AddThingAccounts<'a> {
-//!     fn try_new(
-//!         accounts: &'a [NoStdAccountInfo],
-//!         program_id: &'a Pubkey,
+//! impl<'a> TakeAccounts<'a> for AddThingAccounts<'a> {
+//!     fn take_accounts(
+//!         iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
 //!     ) -> Result<Self, ProgramError> {
-//!         let mut accounts_iter = accounts.iter().enumerate();
-//!
-//!         let payer = try_next_enumerated_account(&mut accounts_iter, Default::default())?;
+//!         let payer = try_next_enumerated_account(iter, Default::default())?;
 //!
 //!         let (new_thing_addr, new_thing_bump) =
-//!             Pubkey::find_program_address(&[b"thing"], program_id);
+//!             Pubkey::find_program_address(&[b"thing"], &ID);
 //!
 //!         let (new_thing_index, new_thing_account) = try_next_enumerated_account(
-//!             &mut accounts_iter,
+//!             iter,
 //!             NextEnumeratedAccountOptions {
 //!                 key: Some(&new_thing_addr),
 //!                 ..Default::default()
@@ -385,6 +386,7 @@
 //! [Payer]: crate::account_info::Payer
 //! [README]: https://crates.io/crates/sealevel-tools
 //! [Signer]: crate::account_info::Signer
+//! [TakeAccounts]: crate::account_info::TakeAccounts
 //! [WritableAccount]: crate::account_info::WritableAccount
 //! [anchor-lang]: https://docs.rs/anchor-lang/latest/anchor_lang/
 //! [msg!]: https://docs.rs/solana-program/latest/solana_program/macro.msg.html

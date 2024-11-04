@@ -112,7 +112,7 @@ pub fn try_failsafe_create_account<'a>(
     Ok(Account(to.account))
 }
 
-/// Arguments for [try_failsafe_create_account].
+/// Arguments for [try_create_serialized_account].
 pub struct CreateSerializedAccount<'a, 'b> {
     /// The account that will pay for the rent.
     ///

@@ -71,6 +71,10 @@ impl<'a, const LEN: usize> Discriminator<'a, LEN> {
 /// [Discriminate::DISCRIMINATOR] can be used in conjunction with [Discriminator] to generate a
 /// unique discriminator for a type.
 ///
+/// Unfortunately associated consts (e.g. `LEN`) cannot be used in const generics (e.g.
+/// `DISCRIMINATOR`), so `LEN` must be defined in the trait implementation. When [this issue] will
+/// be resolved, this trait will be updated.
+///
 /// ### Example
 ///
 /// ```
@@ -94,6 +98,8 @@ impl<'a, const LEN: usize> Discriminator<'a, LEN> {
 ///   const DISCRIMINATOR: [u8; 4] = Discriminator::Sha3(b"AnotherThing").to_bytes();
 /// }
 /// ```
+///
+/// [this issue]: <https://github.com/rust-lang/rust/issues/60551>
 pub trait Discriminate<const LEN: usize> {
     /// Fixed-bytes discriminator. This can be used with [Discriminator] to generate bytes based on
     /// a hash.

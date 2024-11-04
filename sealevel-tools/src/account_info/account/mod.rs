@@ -292,8 +292,8 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
 /// }
 /// ```
 #[inline(always)]
-pub fn try_next_enumerated_account<'a, 'b, T>(
-    iter: &mut impl Iterator<Item = (usize, &'b NoStdAccountInfo)>,
+pub fn try_next_enumerated_account<'a, T>(
+    iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
     NextEnumeratedAccountOptions {
         key,
         any_of_keys,
@@ -306,8 +306,8 @@ pub fn try_next_enumerated_account<'a, 'b, T>(
     }: NextEnumeratedAccountOptions,
 ) -> Result<(usize, T), ProgramError>
 where
-    T: ProcessNextEnumeratedAccount<'b>,
-    ProgramError: From<<T as TryFrom<&'b NoStdAccountInfo>>::Error>,
+    T: ProcessNextEnumeratedAccount<'a>,
+    ProgramError: From<<T as TryFrom<&'a NoStdAccountInfo>>::Error>,
 {
     let (index, account) = try_next_enumerated_account_info(
         iter,
@@ -326,4 +326,60 @@ where
     let processed = T::try_from(account)?;
 
     Ok((index, processed))
+}
+
+/// Trait for composable account structs. This trait is meant to leverage the
+/// [try_next_enumerated_account] and [try_next_enumerated_account_info] functions to process an
+/// enumerated [NoStdAccountInfo] iterator.
+///
+/// ### Example
+///
+/// ```
+/// use sealevel_tools::account_info::{
+///     Payer, ReadonlyAccount, TakeAccounts, WritableAccount, try_next_enumerated_account,
+/// };
+/// use solana_nostd_entrypoint::NoStdAccountInfo;
+/// use solana_program::program_error::ProgramError;
+///
+/// struct ComposableAccounts<'a> {
+///     thing_one: ReadonlyAccount<'a>,
+///     thing_two: WritableAccount<'a>,
+/// }
+///
+/// impl<'a> TakeAccounts<'a> for ComposableAccounts<'a> {
+///     fn take_accounts(
+///         iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
+///     ) -> Result<Self, ProgramError> {
+///         let (_, thing_one) = try_next_enumerated_account(iter, Default::default())?;
+///         let (_, thing_two) = try_next_enumerated_account(iter, Default::default())?;
+///
+///         Ok(Self { thing_one, thing_two })
+///     }
+/// }
+///
+/// struct MyAccounts<'a> {
+///     payer: Payer<'a>,
+///     an_account: ReadonlyAccount<'a>,
+///     things: ComposableAccounts<'a>,
+/// }
+///
+/// impl<'a> TakeAccounts<'a> for MyAccounts<'a> {
+///     fn take_accounts(
+///         iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
+///     ) -> Result<Self, ProgramError> {
+///         let (_, payer) = try_next_enumerated_account(iter, Default::default())?;
+///         let (_, an_account) = try_next_enumerated_account(iter, Default::default())?;
+///
+///         Ok(Self {
+///             payer,
+///             an_account,
+///             things: TakeAccounts::take_accounts(iter)?,
+///         })
+///     }
+/// }
+/// ```
+pub trait TakeAccounts<'a>: Sized {
+    fn take_accounts(
+        iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
+    ) -> Result<Self, ProgramError>;
 }

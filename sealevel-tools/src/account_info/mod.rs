@@ -89,7 +89,7 @@ pub struct NextEnumeratedAccountOptions<'a, 'b> {
 /// }
 /// ```
 #[inline(always)]
-pub fn try_next_enumerated_account_info<'a, 'b, I>(
+pub fn try_next_enumerated_account_info<'a, I>(
     iter: &mut I,
     NextEnumeratedAccountOptions {
         key,
@@ -103,7 +103,7 @@ pub fn try_next_enumerated_account_info<'a, 'b, I>(
     }: NextEnumeratedAccountOptions,
 ) -> Result<I::Item, ProgramError>
 where
-    I: Iterator<Item = (usize, &'b NoStdAccountInfo)>,
+    I: Iterator<Item = (usize, &'a NoStdAccountInfo)>,
 {
     let (index, account) = iter.next().ok_or(ProgramError::NotEnoughAccountKeys)?;
 
