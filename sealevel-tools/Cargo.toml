@@ -2,6 +2,7 @@
 name = "sealevel-tools"
 description = "Tools for Solana program development"
 keywords = [
+    "nostd-entrypoint",
     "solana",
     "solana-program",
     "spl"
