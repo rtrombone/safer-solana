@@ -12,7 +12,6 @@ use core::borrow::Borrow;
 pub use borsh::*;
 
 use solana_program::{
-    msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
 };
@@ -52,13 +51,13 @@ use crate::discriminator::Discriminate;
 ///         Ok(())
 ///     }
 ///
-///     fn try_account_schema_space(&self) -> Result<u64, ProgramError> {
+///     fn try_account_schema_space(&self) -> Result<usize, ProgramError> {
 ///         Ok(8)
 ///     }
 /// }
 /// ```
 ///
-/// Using borsh:
+/// Using [borsh]:
 /// ```
 /// use borsh::{BorshDeserialize, BorshSerialize};
 /// use sealevel_tools::{account::AccountSerde, discriminator::{Discriminate, Discriminator}};
@@ -72,20 +71,23 @@ use crate::discriminator::Discriminate;
 ///     const DISCRIMINATOR: [u8; 8] = Discriminator::Sha2(b"state::Thing").to_bytes();
 /// }
 /// ```
+///
+/// [borsh]: ::borsh
 pub trait AccountSerde<const DISC_LEN: usize>: Sized + Discriminate<DISC_LEN> {
     /// Deserialize the data from the given mutable slice of bytes.
     fn try_deserialize_schema(data: &mut &[u8]) -> Result<Self, ProgramError>;
 
+    /// Serialize the schema into the given mutable slice of bytes.
     fn try_serialize_schema(&self, buf: &mut [u8]) -> Result<(), ProgramError>;
 
     /// Compute serialized length including its discriminator.
-    fn try_account_schema_space(&self) -> Result<u64, ProgramError>;
+    fn try_account_schema_space(&self) -> Result<usize, ProgramError>;
 
     fn try_deserialize_data(data: &mut &[u8]) -> Result<Self, ProgramError> {
         let _: [u8; DISC_LEN] = match data[..DISC_LEN].try_into() {
             Ok(discriminator) if discriminator == Self::DISCRIMINATOR => discriminator,
             _ => {
-                msg!("Invalid account discriminator");
+                solana_program::log::sol_log("Invalid account discriminator");
                 return Err(ProgramError::InvalidAccountData);
             }
         };
@@ -100,9 +102,9 @@ pub trait AccountSerde<const DISC_LEN: usize>: Sized + Discriminate<DISC_LEN> {
         self.try_serialize_schema(buf)
     }
 
-    fn try_account_space(&self) -> Result<u64, ProgramError> {
+    fn try_account_space(&self) -> Result<usize, ProgramError> {
         self.try_account_schema_space()
-            .map(|len| len.saturating_add(DISC_LEN as u64))
+            .map(|len| len.saturating_add(DISC_LEN))
     }
 }
 
@@ -118,13 +120,14 @@ where
         T::Owned::try_deserialize_schema(data).map(Into::into)
     }
 
+    #[inline(always)]
     fn try_serialize_schema(&self, buf: &mut [u8]) -> Result<(), ProgramError> {
         self.as_ref().try_serialize_schema(buf)
     }
 
     /// Compute serialized length including its discriminator.
     #[inline(always)]
-    fn try_account_schema_space(&self) -> Result<u64, ProgramError> {
+    fn try_account_schema_space(&self) -> Result<usize, ProgramError> {
         self.as_ref().try_account_schema_space()
     }
 }
@@ -157,6 +160,7 @@ impl<T: Pack + IsInitialized> AccountSerde<0> for PackAccountSchema<T> {
         T::unpack(data).map(Self)
     }
 
+    #[inline(always)]
     fn try_serialize_schema(&self, buf: &mut [u8]) -> Result<(), ProgramError> {
         self.0.pack_into_slice(buf);
 
@@ -165,7 +169,7 @@ impl<T: Pack + IsInitialized> AccountSerde<0> for PackAccountSchema<T> {
 
     /// Compute serialized length including its discriminator.
     #[inline(always)]
-    fn try_account_schema_space(&self) -> Result<u64, ProgramError> {
-        Ok(T::LEN as u64)
+    fn try_account_schema_space(&self) -> Result<usize, ProgramError> {
+        Ok(T::LEN)
     }
 }

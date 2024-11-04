@@ -1,8 +1,5 @@
 //! Discriminator generation for program accounts, events, and instructions.
 
-#[cfg(feature = "alloc")]
-use core::borrow::Borrow;
-
 /// Discriminator generated either by user-defined or by specific hashing function (where total hash
 /// output is 256 bits). These discriminators can be used for discriminating against serialized
 /// program accounts, serialized events, and instructions (as selectors for specific program
@@ -38,6 +35,8 @@ impl<'a, const LEN: usize> Discriminator<'a, LEN> {
     /// larger than a computed digest's length (32 bytes). If LEN is larger, the output will be padded
     /// to the right with zeros.
     pub const fn to_bytes(self) -> [u8; LEN] {
+        assert!(LEN <= 32, "LEN must be less than or equal to 32");
+
         let digest = match self {
             Discriminator::Defined(disc) => return disc,
             Discriminator::Keccak(input) => const_crypto::sha3::Keccak256::new()
@@ -54,7 +53,7 @@ impl<'a, const LEN: usize> Discriminator<'a, LEN> {
         let mut inner = [0; LEN];
         let mut i = 0;
         loop {
-            if i >= LEN || i >= digest.len() {
+            if i >= LEN {
                 break;
             }
 
@@ -109,7 +108,7 @@ pub trait Discriminate<const LEN: usize> {
 #[cfg(feature = "alloc")]
 impl<const LEN: usize, T, U> Discriminate<LEN> for alloc::boxed::Box<T>
 where
-    U: Into<alloc::boxed::Box<T>> + Borrow<T>,
+    U: Into<alloc::boxed::Box<T>> + core::borrow::Borrow<T>,
     T: Discriminate<LEN> + alloc::borrow::ToOwned<Owned = U> + ?Sized,
     T::Owned: Discriminate<LEN>,
 {

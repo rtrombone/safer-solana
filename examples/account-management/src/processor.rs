@@ -1,17 +1,22 @@
 use sealevel_tools::{
     account::BorshAccountSchema,
     account_info::{
-        try_next_enumerated_account, BorshWritableAccount, NextEnumeratedAccountOptions, Payer,
+        try_next_enumerated_account, MatchDataSlice, NextEnumeratedAccountOptions, Payer,
         WritableAccount,
     },
-    cpi::system_program::{try_create_serialized_account, CreateSerializedAccount},
+    cpi::system_program::CreateAccount,
+    discriminator::Discriminate,
     pda::DeriveAddress,
 };
 use solana_nostd_entrypoint::NoStdAccountInfo;
 use solana_program::entrypoint::ProgramResult;
 
-use crate::{state::Thing, ID};
+use crate::{
+    state::{Thing, ThingWritableAccount},
+    ID,
+};
 
+#[inline(always)]
 pub fn init_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -31,24 +36,25 @@ pub fn init_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
 
     let thing = BorshAccountSchema(Thing { value });
 
-    try_create_serialized_account(
-        CreateSerializedAccount {
-            payer: payer.as_cpi_authority(),
-            to: new_thing_account.as_cpi_authority(Some(&[Thing::SEED, &[new_thing_bump]])),
-            program_id: &ID,
-            space: None,
-        },
-        &thing,
-    )?;
+    CreateAccount {
+        payer: payer.as_cpi_authority(),
+        to: new_thing_account.as_cpi_authority(Some(&[Thing::SEED, &[new_thing_bump]])),
+        program_id: &ID,
+        space: None,
+        lamports: None,
+    }
+    .try_invoke_and_serialize(&thing)?;
 
     Ok(())
 }
 
+#[inline(always)]
 pub fn update_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
     let mut accounts_iter = accounts.iter().enumerate();
 
-    // First account is the Thing.
-    let (_, mut thing_account) = try_next_enumerated_account::<BorshWritableAccount<8, Thing>>(
+    // First account is the Thing. We do not need to check that this account is owned by this
+    // program because the write will fail if it isn't.
+    let (_, mut thing_account) = try_next_enumerated_account::<ThingWritableAccount>(
         &mut accounts_iter,
         Default::default(),
     )?;
@@ -59,20 +65,28 @@ pub fn update_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult 
     Ok(())
 }
 
+#[inline(always)]
 pub fn close_thing(accounts: &[NoStdAccountInfo]) -> ProgramResult {
     let mut accounts_iter = accounts.iter().enumerate();
 
-    // First account is the Thing.
-    let (_, thing_account) = try_next_enumerated_account::<BorshWritableAccount<8, Thing>>(
+    // First account is the Thing. We only need to match the discriminator. We do not need to check
+    // that this account is owned by this program because the close will fail if it isn't.
+    let (_, thing_account) = try_next_enumerated_account::<WritableAccount>(
         &mut accounts_iter,
-        Default::default(),
+        NextEnumeratedAccountOptions {
+            match_data_slice: Some(MatchDataSlice {
+                offset: 0,
+                data: &Thing::DISCRIMINATOR,
+            }),
+            ..Default::default()
+        },
     )?;
 
     // Second account is the beneficiary.
     let (_, beneficiary) =
         try_next_enumerated_account::<WritableAccount>(&mut accounts_iter, Default::default())?;
 
-    thing_account.account.try_close(&beneficiary)?;
+    thing_account.try_close(&beneficiary)?;
 
     Ok(())
 }

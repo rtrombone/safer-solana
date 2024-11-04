@@ -1,5 +1,10 @@
-use example_account_management::{instruction::ProgramInstruction, state::Thing};
-use sealevel_tools::account::{AccountSerde, BorshAccountSchema};
+use example_account_management::{
+    instruction::ProgramInstruction,
+    state::{Thing, ThingSchema},
+    ID,
+};
+use examples_common::program_failed;
+use sealevel_tools::account::AccountSerde;
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_program_test::{tokio, ProgramTest};
 use solana_sdk::{
@@ -12,13 +17,10 @@ async fn test_thing() {
     // Init.
     let value = 69;
 
-    let (mut banks_client, payer, recent_blockhash) = ProgramTest::new(
-        "example_account_management",
-        example_account_management::ID,
-        None,
-    )
-    .start()
-    .await;
+    let (mut banks_client, payer, recent_blockhash) =
+        ProgramTest::new("example_account_management", ID, None)
+            .start()
+            .await;
 
     let (new_thing_addr, new_thing_bump) =
         Pubkey::find_program_address(&[b"thing"], &example_account_management::ID);
@@ -30,7 +32,7 @@ async fn test_thing() {
             new_thing: AccountMeta::new(new_thing_addr, false),
             system_program: AccountMeta::new_readonly(system_program::ID, false),
         }
-        .to_instruction(value)],
+        .into_instruction(value)],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer], recent_blockhash);
@@ -41,8 +43,12 @@ async fn test_thing() {
         .unwrap()
         .metadata
         .unwrap();
-    assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 3_683);
+    assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+    // NOTE: Thing bump is 255, which requires 1 iteration to find the thing key. Each bump
+    // iteration costs 1,200 CU. The total adjustment is 1,200 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
+    assert_eq!(adjusted_compute_units_consumed, 2_486);
 
     // Check the new_thing account.
     let account_data = banks_client
@@ -51,8 +57,7 @@ async fn test_thing() {
         .unwrap()
         .unwrap()
         .data;
-    let thing_data =
-        BorshAccountSchema::<8, Thing>::try_deserialize_data(&mut &account_data[..]).unwrap();
+    let thing_data = ThingSchema::try_deserialize_data(&mut &account_data[..]).unwrap();
     assert_eq!(
         account_data.len(),
         thing_data.try_account_space().unwrap() as usize
@@ -67,7 +72,7 @@ async fn test_thing() {
         &[UpdateThing {
             thing: AccountMeta::new(new_thing_addr, false),
         }
-        .to_instruction(new_value)],
+        .into_instruction(new_value)],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer], recent_blockhash);
@@ -78,7 +83,7 @@ async fn test_thing() {
         .unwrap()
         .metadata
         .unwrap();
-    assert!(!program_failed(&tx_meta.log_messages));
+    assert!(!program_failed(&ID, &tx_meta.log_messages));
     assert_eq!(tx_meta.compute_units_consumed, 264);
 
     // Check the thing account.
@@ -88,8 +93,7 @@ async fn test_thing() {
         .unwrap()
         .unwrap()
         .data;
-    let thing_data =
-        BorshAccountSchema::<8, Thing>::try_deserialize_data(&mut &account_data[..]).unwrap();
+    let thing_data = ThingSchema::try_deserialize_data(&mut &account_data[..]).unwrap();
     assert_eq!(
         account_data.len(),
         thing_data.try_account_space().unwrap() as usize
@@ -110,7 +114,7 @@ async fn test_thing() {
             thing: AccountMeta::new(new_thing_addr, false),
             beneficiary: AccountMeta::new(beneficiary, false),
         }
-        .to_instruction()],
+        .into_instruction()],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer], recent_blockhash);
@@ -121,8 +125,8 @@ async fn test_thing() {
         .unwrap()
         .metadata
         .unwrap();
-    assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 451);
+    assert!(!program_failed(&ID, &tx_meta.log_messages));
+    assert_eq!(tx_meta.compute_units_consumed, 445);
 
     let closed_thing = banks_client.get_account(new_thing_addr).await.unwrap();
     assert!(closed_thing.is_none());
@@ -160,7 +164,7 @@ async fn test_init_thing_already_having_lamports() {
                 new_thing: AccountMeta::new(new_thing_addr, false),
                 system_program: AccountMeta::new_readonly(system_program::ID, false),
             }
-            .to_instruction(value),
+            .into_instruction(value),
         ],
         Some(&payer.pubkey()),
     );
@@ -172,8 +176,12 @@ async fn test_init_thing_already_having_lamports() {
         .unwrap()
         .metadata
         .unwrap();
-    assert!(!program_failed(&tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 6_272);
+    assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+    // NOTE: Thing bump is 255, which requires 1 iteration to find the thing key. Each bump
+    // iteration costs 1,200 CU. The total adjustment is 1,200 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
+    assert_eq!(adjusted_compute_units_consumed, 5_078);
 
     // Check the new_thing account.
     let account_data = banks_client
@@ -182,27 +190,12 @@ async fn test_init_thing_already_having_lamports() {
         .unwrap()
         .unwrap()
         .data;
-    let thing_data =
-        BorshAccountSchema::<8, Thing>::try_deserialize_data(&mut &account_data[..]).unwrap();
+    let thing_data = ThingSchema::try_deserialize_data(&mut &account_data[..]).unwrap();
     assert_eq!(
         account_data.len(),
         thing_data.try_account_space().unwrap() as usize
     );
     assert_eq!(thing_data.0, Thing { value });
-}
-
-fn program_failed(log_messages: &Vec<String>) -> bool {
-    log_messages
-        .iter()
-        .filter(|line| {
-            line.contains(&format!(
-                "Program {} failed",
-                example_account_management::ID
-            ))
-        })
-        .peekable()
-        .peek()
-        .is_some()
 }
 
 struct InitThing {
@@ -212,7 +205,7 @@ struct InitThing {
 }
 
 impl InitThing {
-    fn to_instruction(self, value: u64) -> Instruction {
+    fn into_instruction(self, value: u64) -> Instruction {
         let InitThing {
             payer,
             new_thing,
@@ -232,7 +225,7 @@ struct UpdateThing {
 }
 
 impl UpdateThing {
-    fn to_instruction(self, value: u64) -> Instruction {
+    fn into_instruction(self, value: u64) -> Instruction {
         let UpdateThing { thing } = self;
 
         Instruction {
@@ -249,7 +242,7 @@ struct CloseThing {
 }
 
 impl CloseThing {
-    fn to_instruction(self) -> Instruction {
+    fn into_instruction(self) -> Instruction {
         let CloseThing { thing, beneficiary } = self;
 
         Instruction {

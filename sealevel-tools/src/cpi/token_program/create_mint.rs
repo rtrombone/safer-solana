@@ -4,30 +4,11 @@ use spl_token_2022::state::Mint;
 
 use crate::{
     account_info::{is_any_token_program_id, Account},
-    cpi::{
-        system_program::{try_failsafe_create_account, FailsafeCreateAccount},
-        CpiAuthority, CpiPrecursor,
-    },
+    cpi::{system_program::CreateAccount, CpiAuthority, CpiInstruction},
 };
 
-/// Arguments for [try_create_mint].
-pub struct CreateMint<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub payer: CpiAuthority<'a, 'b>,
-    pub mint: CpiAuthority<'a, 'b>,
-    pub mint_authority: &'b Pubkey,
-    pub decimals: u8,
-    pub opts: CreateMintOptions<'b>,
-}
-
-/// Optional arguments for [try_create_mint].
-#[derive(Default)]
-pub struct CreateMintOptions<'a> {
-    pub freeze_authority: Option<&'a Pubkey>,
-}
-
-/// Create a mint account. This method creates an account for one of the Token programs and
-/// initializes it as a mint.
+/// Arguments to create a mint account. This method creates an account for one of the Token programs
+/// and initializes it as a mint.
 ///
 /// ### Example
 ///
@@ -37,7 +18,7 @@ pub struct CreateMintOptions<'a> {
 ///         try_next_enumerated_account, try_next_enumerated_account_info, AnyTokenProgram,
 ///         NextEnumeratedAccountOptions, Account, Signer,
 ///     },
-///     cpi::token_program::{try_create_mint, CreateMint},
+///     cpi::token_program::CreateMint,
 /// };
 /// use solana_nostd_entrypoint::NoStdAccountInfo;
 /// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
@@ -73,52 +54,75 @@ pub struct CreateMintOptions<'a> {
 ///     let (_, token_program) =
 ///         try_next_enumerated_account::<AnyTokenProgram>(&mut accounts_iter, Default::default())?;
 ///
-///     try_create_mint(CreateMint {
+///     CreateMint {
 ///         token_program_id: token_program.key(),
 ///         payer: payer.as_cpi_authority(),
 ///         mint: new_mint_account.as_cpi_authority(Some(&[b"mint", &[new_mint_bump]])),
 ///         mint_authority: mint_authority.key(),
 ///         decimals: 9,
-///         opts: Default::default(), // No freeze authority specified.
-///     })?;
+///         freeze_authority: None,
+///     }
+///     .try_into_invoke()?;
 ///
 ///     Ok(())
 /// }
 /// ```
-pub fn try_create_mint<'b>(
-    CreateMint {
-        token_program_id,
-        payer,
-        mint,
-        mint_authority,
-        decimals,
-        opts: CreateMintOptions { freeze_authority },
-    }: CreateMint<'_, 'b>,
-) -> Result<Account<'b, true>, ProgramError> {
-    if !is_any_token_program_id(token_program_id) {
-        return Err(ProgramError::InvalidAccountData);
-    }
-
-    // First create the mint account by assigning it to the token program.
-    let mint_account = try_failsafe_create_account(FailsafeCreateAccount {
-        payer,
-        to: mint,
-        space: Mint::LEN as u64,
-        program_id: token_program_id,
-    })?;
-
-    _invoke_initialize_mint2_unchecked(
-        token_program_id,
-        &mint_account,
-        mint_authority,
-        freeze_authority,
-        decimals,
-    );
-
-    Ok(mint_account)
+pub struct CreateMint<'a, 'b> {
+    pub token_program_id: &'b Pubkey,
+    pub payer: CpiAuthority<'a, 'b>,
+    pub mint: CpiAuthority<'a, 'b>,
+    pub mint_authority: &'b Pubkey,
+    pub decimals: u8,
+    pub freeze_authority: Option<&'a Pubkey>,
 }
 
-/// Arguments for [invoke_initialize_mint2_unchecked].
+impl<'a, 'b> CreateMint<'a, 'b> {
+    /// Try to consume arguments to perform CPI calls.
+    #[inline(always)]
+    pub fn try_into_invoke(self) -> Result<Account<'a, true>, ProgramError> {
+        let Self {
+            token_program_id,
+            payer,
+            mint,
+            mint_authority,
+            decimals,
+            freeze_authority,
+        } = self;
+
+        if !is_any_token_program_id(token_program_id) {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // First create the mint account by assigning it to the token program.
+        let mint_account = CreateAccount {
+            payer,
+            to: mint,
+            program_id: token_program_id,
+            space: Some(Mint::LEN),
+            lamports: None,
+        }
+        .try_into_invoke()?;
+
+        _invoke_initialize_mint2(
+            token_program_id,
+            &mint_account,
+            mint_authority,
+            freeze_authority,
+            decimals,
+        );
+
+        Ok(mint_account)
+    }
+}
+
+/// Arguments for the initialize mint instruction (version 2), which initializes a mint account for
+/// one of the Token programs. Only use this instruction if you have already created the mint
+/// account via the System program.
+///
+/// ### Notes
+///
+/// It is preferred to use [CreateMint] instead of initializing a mint by itself because the other
+/// method will create the account and initialize it as a mint in one action.
 pub struct InitializeMint2<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,
@@ -127,31 +131,30 @@ pub struct InitializeMint2<'a> {
     pub decimals: u8,
 }
 
-/// Initialize a mint account. This method initializes a mint account for one of the Token programs.
-/// Only use this instruction if you have already created the mint account via the System program.
-///
-/// NOTE: It is preferred to use [try_create_mint] instead of this method because it will create the
-/// account and initialize it as a mint in one action.
-pub fn invoke_initialize_mint2_unchecked(
-    InitializeMint2 {
-        token_program_id,
-        mint,
-        mint_authority,
-        freeze_authority,
-        decimals,
-    }: InitializeMint2,
-) {
-    _invoke_initialize_mint2_unchecked(
-        token_program_id,
-        mint,
-        mint_authority,
-        freeze_authority,
-        decimals,
-    );
+impl<'a> InitializeMint2<'a> {
+    /// Consume arguments to perform CPI call.
+    #[inline(always)]
+    pub fn into_invoke(self) {
+        let Self {
+            token_program_id,
+            mint,
+            mint_authority,
+            freeze_authority,
+            decimals,
+        } = self;
+
+        _invoke_initialize_mint2(
+            token_program_id,
+            mint,
+            mint_authority,
+            freeze_authority,
+            decimals,
+        );
+    }
 }
 
 #[inline(always)]
-fn _invoke_initialize_mint2_unchecked(
+fn _invoke_initialize_mint2(
     token_program_id: &Pubkey,
     mint: &NoStdAccountInfo,
     mint_authority: &Pubkey,
@@ -175,11 +178,10 @@ fn _invoke_initialize_mint2_unchecked(
         instruction_data[35..67].copy_from_slice(&freeze_authority.to_bytes());
     }
 
-    CpiPrecursor {
+    CpiInstruction {
         program_id: token_program_id,
-        accounts: [mint.to_meta_c()],
-        instruction_data,
-        infos: [mint.to_info_c()],
+        accounts: &[mint.to_meta_c()],
+        data: &instruction_data,
     }
-    .invoke_signed_unchecked(&[]);
+    .invoke_signed(&[mint.to_info_c()], &[]);
 }

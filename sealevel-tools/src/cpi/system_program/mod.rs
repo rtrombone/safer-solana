@@ -1,4 +1,14 @@
 //! CPI for System program.
+//!
+//! ### Notes
+//!
+//! This module does not have optimized CPI calls for every instruction. For any instruction you
+//! need for your program that does not exist here, please use [invoke_signed] with instruction
+//! builders found in the [solana_program::system_instruction] module.
+//!
+//! See detailed examples of how to perform CPI with [CreateAccount].
+//!
+//! [invoke_signed]: crate::cpi::invoke_signed
 
 mod allocate;
 mod assign;
@@ -11,19 +21,3 @@ pub use create_account::*;
 pub use transfer::*;
 
 pub use solana_program::system_program::ID;
-
-#[inline(always)]
-fn _invoke_signed_from_to_unchecked<const ACCOUNT_LEN: usize, const DATA_LEN: usize>(
-    precursor: super::CpiPrecursor<ACCOUNT_LEN, DATA_LEN>,
-    from_signer_seeds: Option<&[&[u8]]>,
-    to_signer_seeds: Option<&[&[u8]]>,
-) {
-    match (from_signer_seeds, to_signer_seeds) {
-        (Some(from_signer_seeds), Some(to_signer_seeds)) => {
-            precursor.invoke_signed_unchecked(&[from_signer_seeds, to_signer_seeds])
-        }
-        (None, Some(to_signer_seeds)) => precursor.invoke_signed_unchecked(&[to_signer_seeds]),
-        (Some(from_signer_seeds), None) => precursor.invoke_signed_unchecked(&[from_signer_seeds]),
-        (None, None) => precursor.invoke_signed_unchecked(&[]),
-    };
-}

@@ -1,6 +1,8 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use sealevel_tools::discriminator::Discriminator;
 
+pub type Selector = [u8; 4];
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ProgramInstruction {
     InitThing(u64),
@@ -9,12 +11,13 @@ pub enum ProgramInstruction {
 }
 
 impl ProgramInstruction {
-    pub const INIT_THING: [u8; 4] = Discriminator::Sha2(b"ix::init_thing").to_bytes();
-    pub const UPDATE_THING: [u8; 4] = Discriminator::Sha2(b"ix::update_thing").to_bytes();
-    pub const CLOSE_THING: [u8; 4] = Discriminator::Sha2(b"ix::close_thing").to_bytes();
+    pub const INIT_THING: Selector = Discriminator::Sha2(b"ix::init_thing").to_bytes();
+    pub const UPDATE_THING: Selector = Discriminator::Sha2(b"ix::update_thing").to_bytes();
+    pub const CLOSE_THING: Selector = Discriminator::Sha2(b"ix::close_thing").to_bytes();
 }
 
 impl BorshDeserialize for ProgramInstruction {
+    #[inline(always)]
     fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
         match BorshDeserialize::deserialize_reader(reader)? {
             Self::INIT_THING => Ok(Self::InitThing(BorshDeserialize::deserialize_reader(
@@ -33,6 +36,7 @@ impl BorshDeserialize for ProgramInstruction {
 }
 
 impl BorshSerialize for ProgramInstruction {
+    #[inline(always)]
     fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         match self {
             Self::InitThing(value) => {

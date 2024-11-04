@@ -1374,9 +1374,10 @@ checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
 
 [[package]]
 name = "example-account-management"
-version = "0.3.2-beta.1"
+version = "0.4.0-beta.1"
 dependencies = [
  "borsh 1.5.1",
+ "examples-common",
  "sealevel-tools",
  "solana-nostd-entrypoint",
  "solana-program 1.18.26",
@@ -1386,9 +1387,10 @@ dependencies = [
 
 [[package]]
 name = "example-token-management"
-version = "0.3.2-beta.1"
+version = "0.4.0-beta.1"
 dependencies = [
  "borsh 1.5.1",
+ "examples-common",
  "sealevel-tools",
  "solana-banks-interface",
  "solana-nostd-entrypoint",
@@ -1397,6 +1399,13 @@ dependencies = [
  "solana-sdk",
  "spl-token",
  "spl-token-2022 3.0.4",
+]
+
+[[package]]
+name = "examples-common"
+version = "0.4.0-beta.1"
+dependencies = [
+ "solana-program 1.18.26",
 ]
 
 [[package]]
@@ -3278,10 +3287,11 @@ dependencies = [
 
 [[package]]
 name = "sealevel-tools"
-version = "0.3.2-beta.1"
+version = "0.4.0-beta.1"
 dependencies = [
  "bincode",
  "borsh 1.5.1",
+ "bs58 0.5.1",
  "const-crypto",
  "solana-nostd-entrypoint",
  "solana-program 1.18.26",

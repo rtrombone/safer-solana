@@ -7,9 +7,9 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::{account_info::NextEnumeratedAccountOptions, error::SealevelToolsError};
+use crate::error::SealevelToolsError;
 
-use super::{Account, ProcessNextEnumeratedAccount, Program};
+use super::{Account, Program};
 
 /// Representing the BPF loader upgradeable program.
 pub struct BpfLoaderUpgradeableProgram<'a>(pub Program<'a>);
@@ -19,7 +19,7 @@ impl<'a> TryFrom<&'a NoStdAccountInfo> for BpfLoaderUpgradeableProgram<'a> {
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
-        if account.owner() == &ID {
+        if account.key() == &ID {
             Ok(Self(Program::try_from(account)?))
         } else {
             Err(SealevelToolsError::AccountInfo(&[
@@ -27,14 +27,6 @@ impl<'a> TryFrom<&'a NoStdAccountInfo> for BpfLoaderUpgradeableProgram<'a> {
             ]))
         }
     }
-}
-
-impl<'a> ProcessNextEnumeratedAccount<'a> for BpfLoaderUpgradeableProgram<'a> {
-    const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
-        NextEnumeratedAccountOptions {
-            key: Some(&ID),
-            ..Program::NEXT_ACCOUNT_OPTIONS
-        };
 }
 
 impl<'a> Deref for BpfLoaderUpgradeableProgram<'a> {
@@ -96,16 +88,8 @@ impl<'a, const WRITE: bool> UpgradeableProgramData<'a, WRITE> {
         self.data.0
     }
 
-    /// The upgrade authority address. If `None`, the program is immutable.
+    /// The upgrade authority address. If [None], the program is immutable.
     pub fn upgrade_authority_address(&self) -> Option<Pubkey> {
         self.data.1
     }
-}
-
-impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for UpgradeableProgramData<'a, WRITE> {
-    const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
-        NextEnumeratedAccountOptions {
-            owner: Some(&ID),
-            ..Account::<'a, WRITE>::NEXT_ACCOUNT_OPTIONS
-        };
 }

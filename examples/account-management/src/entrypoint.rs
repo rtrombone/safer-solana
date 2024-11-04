@@ -4,6 +4,7 @@ use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pub
 
 use crate::{instruction::ProgramInstruction, processor};
 
+#[inline(always)]
 fn process_instruction(
     program_id: &Pubkey,
     accounts: &[NoStdAccountInfo],

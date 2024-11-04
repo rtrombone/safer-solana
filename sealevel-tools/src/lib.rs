@@ -3,8 +3,9 @@
 //! specific way of doing so. By using these tools, a developer can write a lightweight program with
 //! functionality found in other frameworks.
 //!
-//! Currently only supports Solana version ^1.18. Until [solana_nostd_entrypoint] supports a higher
-//! version, this package will pin Solana dependencies to the above version.
+//!
+//! Currently, this package only supports Solana version ^1.18 to match Solana dependencies found in
+//! [solana_nostd_entrypoint], meaning that **this package does not yet support Solana 2.0**.
 //!
 //! See this crates's [README] for more information about MSRV and feature flags.
 //!
@@ -70,11 +71,14 @@
 //!     DoSomethingElse { a: u32, b: [u8; 12] }
 //! }
 //!
+//! pub type Selector = [u8; 4];
+//!
 //! impl ProgramInstruction {
-//!     pub const DO_SOMETHING: [u8; 4] = Discriminator::Sha2(b"do_something").to_bytes();
-//!     pub const ADD_THING: [u8; 4] = Discriminator::Sha2(b"add_thing").to_bytes();
-//!     pub const REMOVE_THING: [u8; 4] = Discriminator::Sha2(b"remove_thing").to_bytes();
-//!     pub const DO_SOMETHING_ELSE: [u8; 4] = Discriminator::Sha2(b"do_something_else").to_bytes();
+//!     pub const DO_SOMETHING: Selector = Discriminator::Sha2(b"do_something").to_bytes();
+//!     pub const ADD_THING: Selector = Discriminator::Sha2(b"add_thing").to_bytes();
+//!     pub const REMOVE_THING: Selector = Discriminator::Sha2(b"remove_thing").to_bytes();
+//!     pub const DO_SOMETHING_ELSE: Selector =
+//!         Discriminator::Sha2(b"do_something_else").to_bytes();
 //! }
 //!
 //! impl BorshDeserialize for ProgramInstruction {
@@ -310,7 +314,7 @@
 //! #    account_info::{
 //! #      try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, WritableAccount
 //! #    },
-//! #    cpi::system_program::{try_create_serialized_account, CreateSerializedAccount},
+//! #    cpi::system_program::CreateAccount,
 //! #    discriminator::{Discriminate, Discriminator},
 //! # };
 //! # use solana_nostd_entrypoint::NoStdAccountInfo;
@@ -344,15 +348,14 @@
 //! #         },
 //! #     )?;
 //! #
-//!     try_create_serialized_account(
-//!         CreateSerializedAccount {
-//!             payer: payer.as_cpi_authority(),
-//!             to: new_thing_account.as_cpi_authority(Some(&[b"thing", &[new_thing_bump]])),
-//!             program_id: &ID,
-//!             space: None,
-//!         },
-//!         &BorshAccountSchema(Thing { data: 69 }),
-//!     )?;
+//!     CreateAccount {
+//!         payer: payer.as_cpi_authority(),
+//!         to: new_thing_account.as_cpi_authority(Some(&[b"thing", &[new_thing_bump]])),
+//!         program_id: &ID,
+//!         space: None,
+//!         lamports: None,
+//!     }
+//!     .try_invoke_and_serialize(&BorshAccountSchema(Thing { data: 69 }))?;
 //! #
 //! #   Ok(())
 //! }
@@ -407,3 +410,10 @@ pub mod cpi;
 pub mod discriminator;
 pub mod error;
 pub mod pda;
+
+#[cfg(feature = "borsh")]
+pub extern crate borsh;
+#[cfg(feature = "token")]
+pub extern crate spl_token;
+#[cfg(feature = "token")]
+pub extern crate spl_token_2022;

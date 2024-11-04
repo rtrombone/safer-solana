@@ -17,8 +17,8 @@ See crate [documentation] for more information.
 
 **Minimum-supported Rust version: 1.75.**
 
-Currently, this package only supports Solana version ^1.18. Until [solana-nostd-entrypoint] supports
-a higher version, this package will pin Solana dependencies to the above version.
+Currently, this package only supports Solana version ^1.18 to match Solana dependencies found in
+[solana-nostd-entrypoint], meaning that **this package does not yet support Solana 2.0**.
 
 ## Feature Flags
 
@@ -34,7 +34,7 @@ default = [
 To disable these defaults (e.g. using a heapless environment via [noalloc_allocator]), use
 `default-features = false` in your Cargo.toml and add the features you need for your program:
 ```toml
-sealevel-tools = { version = "0.3.1", default-features = false, features = ["token"] }
+sealevel-tools = { version = "0.4.0", default-features = false, features = ["noalloc-default"] }
 ```
 
 ### `features = ["alloc"]`

@@ -19,5 +19,6 @@ solana-nostd-entrypoint.workspace = true
 solana-program.workspace = true
 
 [dev-dependencies]
+examples-common = { path = "../common" }
 solana-program-test.workspace = true
 solana-sdk.workspace = true

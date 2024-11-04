@@ -15,10 +15,14 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-alloc = []
+alloc = ["dep:bs58"]
 borsh = ["dep:borsh"]
 default = [
     "alloc",
+    "borsh",
+    "token"
+]
+noalloc-default = [
     "borsh",
     "token"
 ]
@@ -28,6 +32,7 @@ token = [
 ]
 
 [dependencies]
+bs58 = { optional = true, workspace = true }
 bincode.workspace = true
 borsh = { optional = true, workspace = true }
 const-crypto.workspace = true

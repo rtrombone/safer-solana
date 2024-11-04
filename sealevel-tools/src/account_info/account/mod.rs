@@ -21,17 +21,6 @@ use crate::{account::AccountSerde, cpi::CpiAuthority, error::SealevelToolsError}
 
 use super::{try_close_account, try_next_enumerated_account_info, NextEnumeratedAccountOptions};
 
-/// Trait for processing the next enumerated [NoStdAccountInfo] with default options. These options can
-/// be overridden in the [try_next_enumerated_account] method (like checking for a specific key or
-/// owner).
-pub trait ProcessNextEnumeratedAccount<'a>: TryFrom<&'a NoStdAccountInfo>
-where
-    ProgramError: From<<Self as TryFrom<&'a NoStdAccountInfo>>::Error>,
-{
-    /// Default options for processing the next enumerated account.
-    const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static>;
-}
-
 /// Generic wrapper for a data account that can be read from or written to (specified by `WRITE`
 /// const parameter).
 pub struct Account<'a, const WRITE: bool>(pub(crate) &'a NoStdAccountInfo);
@@ -67,20 +56,6 @@ impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for Account<'a, WRITE>
     }
 }
 
-impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for Account<'a, WRITE> {
-    const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
-        NextEnumeratedAccountOptions {
-            key: None,
-            any_of_keys: None,
-            owner: None,
-            any_of_owners: None,
-            seeds: None,
-            is_signer: None,
-            is_writable: Some(WRITE),
-            executable: None,
-        };
-}
-
 impl<'a, const WRITE: bool> Deref for Account<'a, WRITE> {
     type Target = NoStdAccountInfo;
 
@@ -89,9 +64,9 @@ impl<'a, const WRITE: bool> Deref for Account<'a, WRITE> {
     }
 }
 
-impl<'b, const WRITE: bool> Account<'b, WRITE> {
-    pub fn as_cpi_authority<'a>(
-        &'b self,
+impl<'a, const WRITE: bool> Account<'a, WRITE> {
+    pub fn as_cpi_authority<'b>(
+        &'a self,
         signer_seeds: Option<&'b [&'a [u8]]>,
     ) -> CpiAuthority<'a, 'b> {
         CpiAuthority {
@@ -109,7 +84,7 @@ impl<'a> TryFrom<&'a NoStdAccountInfo> for Program<'a> {
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
-        if account.executable() {
+        if !account.is_signer() && account.executable() {
             Ok(Self(account))
         } else {
             Err(SealevelToolsError::AccountInfo(&[
@@ -117,20 +92,6 @@ impl<'a> TryFrom<&'a NoStdAccountInfo> for Program<'a> {
             ]))
         }
     }
-}
-
-impl<'a> ProcessNextEnumeratedAccount<'a> for Program<'a> {
-    const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
-        NextEnumeratedAccountOptions {
-            key: None,
-            any_of_keys: None,
-            owner: None,
-            any_of_owners: None,
-            seeds: None,
-            is_signer: None,
-            is_writable: None,
-            executable: Some(true),
-        };
 }
 
 impl<'a> Deref for Program<'a> {
@@ -153,7 +114,8 @@ impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for Signer<'a, WRITE> 
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
-        if account.is_signer() && account.is_writable() == WRITE {
+        // Can a deployed program's keypair still be used as a signer?
+        if !account.executable() && account.is_signer() && account.is_writable() == WRITE {
             Ok(Self(account))
         } else if WRITE {
             Err(SealevelToolsError::AccountInfo(&[
@@ -167,21 +129,6 @@ impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for Signer<'a, WRITE> 
     }
 }
 
-impl<'a, const WRITE: bool> ProcessNextEnumeratedAccount<'a> for Signer<'a, WRITE> {
-    const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
-        NextEnumeratedAccountOptions {
-            key: None,
-            any_of_keys: None,
-            owner: None,
-            any_of_owners: None,
-            seeds: None,
-            is_signer: Some(true),
-            is_writable: Some(WRITE),
-            // Can a deployed program's keypair still be used as a signer?
-            executable: Some(false),
-        };
-}
-
 impl<'a, const WRITE: bool> Deref for Signer<'a, WRITE> {
     type Target = NoStdAccountInfo;
 
@@ -190,8 +137,8 @@ impl<'a, const WRITE: bool> Deref for Signer<'a, WRITE> {
     }
 }
 
-impl<'b, const WRITE: bool> Signer<'b, WRITE> {
-    pub fn as_cpi_authority<'a>(&'b self) -> CpiAuthority<'a, 'b> {
+impl<'a, const WRITE: bool> Signer<'a, WRITE> {
+    pub fn as_cpi_authority<'b>(&'a self) -> CpiAuthority<'a, 'b> {
         CpiAuthority {
             account: self.deref(),
             signer_seeds: None,
@@ -208,7 +155,7 @@ pub struct DataAccount<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountS
 impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
     TryFrom<Account<'a, WRITE>> for DataAccount<'a, WRITE, DISC_LEN, T>
 {
-    type Error = ProgramError;
+    type Error = SealevelToolsError<'static>;
 
     #[inline(always)]
     fn try_from(account: Account<'a, WRITE>) -> Result<Self, Self::Error> {
@@ -224,7 +171,7 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
 impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
     TryFrom<&'a NoStdAccountInfo> for DataAccount<'a, WRITE, DISC_LEN, T>
 {
-    type Error = ProgramError;
+    type Error = SealevelToolsError<'static>;
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
@@ -244,15 +191,17 @@ impl<'a, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> DataAccount<'a, true,
     }
 }
 
-impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
-    ProcessNextEnumeratedAccount<'a> for DataAccount<'a, WRITE, DISC_LEN, T>
+impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> Deref
+    for DataAccount<'a, WRITE, DISC_LEN, T>
 {
-    const NEXT_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
-        Account::<'a, WRITE>::NEXT_ACCOUNT_OPTIONS;
+    type Target = Account<'a, WRITE>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.account
+    }
 }
 
-/// Like [try_next_enumerated_account_info], but processes the account as a specific type
-/// implementing [ProcessNextEnumeratedAccount].
+/// Like [try_next_enumerated_account_info], but processes the account as a specific type.
 ///
 /// ### Example
 ///
@@ -292,36 +241,14 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>>
 /// }
 /// ```
 #[inline(always)]
-pub fn try_next_enumerated_account<'a, T>(
+pub fn try_next_enumerated_account<'a, T: TryFrom<&'a NoStdAccountInfo>>(
     iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
-    NextEnumeratedAccountOptions {
-        key,
-        any_of_keys,
-        owner,
-        any_of_owners,
-        seeds,
-        is_signer,
-        is_writable,
-        executable,
-    }: NextEnumeratedAccountOptions,
+    opts: NextEnumeratedAccountOptions,
 ) -> Result<(usize, T), ProgramError>
 where
-    T: ProcessNextEnumeratedAccount<'a>,
     ProgramError: From<<T as TryFrom<&'a NoStdAccountInfo>>::Error>,
 {
-    let (index, account) = try_next_enumerated_account_info(
-        iter,
-        NextEnumeratedAccountOptions {
-            key: key.or(T::NEXT_ACCOUNT_OPTIONS.key),
-            any_of_keys: any_of_keys.or(T::NEXT_ACCOUNT_OPTIONS.any_of_keys),
-            owner: owner.or(T::NEXT_ACCOUNT_OPTIONS.owner),
-            any_of_owners: any_of_owners.or(T::NEXT_ACCOUNT_OPTIONS.any_of_owners),
-            seeds: seeds.or(T::NEXT_ACCOUNT_OPTIONS.seeds),
-            is_signer: is_signer.or(T::NEXT_ACCOUNT_OPTIONS.is_signer),
-            is_writable: is_writable.or(T::NEXT_ACCOUNT_OPTIONS.is_writable),
-            executable: executable.or(T::NEXT_ACCOUNT_OPTIONS.executable),
-        },
-    )?;
+    let (index, account) = try_next_enumerated_account_info(iter, opts)?;
 
     let processed = T::try_from(account)?;
 

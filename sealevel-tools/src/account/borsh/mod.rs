@@ -17,9 +17,10 @@ use crate::{account::AccountSerde, discriminator::Discriminate};
 /// This method first reads the expected discriminator from the reader and then deserializes the
 /// data into the given type.
 ///
-/// NOTE: This differs from borsh's `try_from_reader`, where this method does not check that all
-/// bytes were consumed. If you need to perform this check, you should do so after calling this
-/// method.
+/// ### Notes
+///
+/// This differs from `try_from_reader` in [borsh], where this method does not check that all bytes
+/// were consumed. If you need to perform this check, you should do so after calling this method.
 #[inline(always)]
 pub fn try_read_borsh_data<const DISC_LEN: usize, T: BorshDeserialize>(
     reader: &mut impl Read,
@@ -100,16 +101,15 @@ where
         T::deserialize(data).map(Self).map_err(Into::into)
     }
 
+    #[inline(always)]
     fn try_serialize_schema(&self, mut buf: &mut [u8]) -> Result<(), ProgramError> {
         self.0.serialize(&mut buf).map_err(Into::into)
     }
 
     /// Compute serialized length including its discriminator.
     #[inline(always)]
-    fn try_account_schema_space(&self) -> Result<u64, ProgramError> {
-        borsh::object_length(&self.0)
-            .map(|len| len as u64)
-            .map_err(Into::into)
+    fn try_account_schema_space(&self) -> Result<usize, ProgramError> {
+        borsh::object_length(&self.0).map_err(Into::into)
     }
 }
 
@@ -133,7 +133,7 @@ mod test {
 
     #[test]
     fn test_try_read_borsh_data() {
-        let data = vec![229, 125, 11, 200, 8, 9, 10, 42, 0, 0, 0, 0, 0, 0, 0, 69];
+        let data = [229, 125, 11, 200, 8, 9, 10, 42, 0, 0, 0, 0, 0, 0, 0, 69];
 
         let disc = Discriminator::<4>::Keccak(b"a thing").to_bytes();
         assert_eq!(disc, <[u8; 4]>::try_from(&data[..4]).unwrap());

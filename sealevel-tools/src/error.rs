@@ -4,6 +4,8 @@ use solana_program::{log::sol_log, program_error::ProgramError};
 
 #[derive(Debug)]
 pub enum SealevelToolsError<'a> {
+    PassThrough(ProgramError),
+
     /// Error relating to the [`account_info` module]. Custom program error code
     /// reflected by [ACCOUNT_INFO].
     ///
@@ -31,6 +33,7 @@ impl<'a> SealevelToolsError<'a> {
 impl<'a> From<SealevelToolsError<'a>> for ProgramError {
     fn from(e: SealevelToolsError) -> ProgramError {
         let (msgs, code) = match e {
+            SealevelToolsError::PassThrough(err) => return err,
             SealevelToolsError::AccountInfo(err) => {
                 sol_log("Custom error: AccountInfo");
                 (err, SealevelToolsError::ACCOUNT_INFO)
@@ -44,5 +47,11 @@ impl<'a> From<SealevelToolsError<'a>> for ProgramError {
         msgs.iter().for_each(|err| sol_log(err));
 
         ProgramError::Custom(code)
+    }
+}
+
+impl<'a> From<ProgramError> for SealevelToolsError<'a> {
+    fn from(e: ProgramError) -> SealevelToolsError<'a> {
+        SealevelToolsError::PassThrough(e)
     }
 }
