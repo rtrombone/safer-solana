@@ -7,7 +7,7 @@ this repository has been formally audited.**
 
 ## Packages
 
-- [sealevel-tools] (0.2.0): Tools for Solana program development to promote
+- [sealevel-tools] (0.3.0): Tools for Solana program development to promote
   lightweight programs. PRs welcome.
 
 ## TODO

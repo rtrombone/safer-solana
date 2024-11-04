@@ -3,15 +3,83 @@
 
 # Sealevel Tools
 
+Tools for safer Solana development.
+
 This crate is not an attempt to create a new framework for writing Solana programs. Instead, it
 is a set of tools that should help a developer write a Solana program without prescribing any
 specific way of doing so. By using these tools, a developer can write a lightweight program with
 functionality found in other frameworks.
 
+See crate [documentation] for more information.
+
 ## Dependencies
 
-Currently only supports Solana version ^1.18. Until [solana-nostd-entrypoint] supports a higher
-version, this package will pin Solana dependencies to the above version.
+**Minimum-supported Rust version: 1.75.**
+
+Currently, this package only supports Solana version ^1.18. Until [solana-nostd-entrypoint] supports
+a higher version, this package will pin Solana dependencies to the above version.
+
+## Feature Flags
+
+When you add this package, the following features are enabled by default:
+```toml
+default = [
+    "alloc",
+    "borsh",
+    "token"
+]
+```
+
+To disable these defaults (e.g. using a heapless environment via [noalloc_allocator]), use
+`default-features = false` in your Cargo.toml and add the features you need for your program:
+```toml
+sealevel-tools = { version = "0.3.0", default-features = false, features = ["token"] }
+```
+
+### `features = ["alloc"]`
+
+Using the Rust's core allocation library, enable this feature. If this feature is disabled, be aware
+that error resolution decreases. For example, with alloc on, you may encounter a program log
+resembling:
+```console
+Program log: Custom error: AccountInfo
+Program log: Account key mismatch at index 1...
+Program log:   Found: 7UbHLbKLfvh3maXuCZMWqKjzMCeLczaJwWTSLVpYV38z
+Program log:   Expected: CjasN94JjDrDeZkxenJGNrN1sqBeHauNkJDp48VQdrtm
+```
+
+**NOTE: With the above example, any referenced index is based on zero-indexed account enumeration.**
+
+And without it, the same error would produce:
+```console
+Program log: Custom error: AccountInfo
+Program log: Account does not match expected key
+```
+
+Having no allocator is extreme. You can still write a program that does not allocate to the
+heap and keep this feature enabled so that the program logs have more colorful error messages. There
+would only be a cost to process these errors if preflight were skipped when sending the
+transaction and you wanted these failed transactions to persist on-chain.
+
+See [alloc] documentation for more information.
+
+### `features = ["borsh"]`
+
+Account handling relating to [borsh] serialization. It is up to you to determine whether there is
+too much overhead to use this serialization library and whether it is worth the time to write your
+own serde.
+
+It should be no cost to have this feature enabled. And as an integrator with another program, you
+will have the option to deserialize accounts of programs written with frameworks like [anchor-lang].
+
+### `features = ["token"]`
+
+Account and CPI handling relating to the SPL Token programs (legacy and Extensions).
+
+There are convenient methods that create mints and token accounts, which basically pair a System
+program's create account with an initialize mint or initialize token account instruction to allow
+these operations to happen atomically in your program's instruction (as opposed to having to create
+an account in an instruction prior to invoking your program's).
 
 ## Philosophy
 
@@ -37,7 +105,11 @@ with that comes the price of having to learn how these specific macros work. And
 add a lot of bloat to your program, where your program size can easily be double the size of a
 program with the same logic but without a specific framework.
 
-[anchor-lang]: https://docs.rs/anchor-lang/latest/
+[alloc]:  https://doc.rust-lang.org/alloc/
+[anchor-lang]: https://docs.rs/anchor-lang/
+[borsh]: https://docs.rs/borsh/
+[documentation]: https://docs.rs/sealevel-tools/
+[noalloc_allocator]: https://docs.rs/solana-nostd-entrypoint/0.5.1/solana_nostd_entrypoint/macro.noalloc_allocator.html
 [solana-nostd-entrypoint]: https://docs.rs/solana-nostd-entrypoint/
-[spl-discriminator]: https://docs.rs/spl-discriminator/latest/
+[spl-discriminator]: https://docs.rs/spl-discriminator/
 [shank]: https://docs.rs/shank/

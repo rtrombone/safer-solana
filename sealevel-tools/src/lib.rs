@@ -6,6 +6,8 @@
 //! Currently only supports Solana version ^1.18. Until [solana_nostd_entrypoint] supports a higher
 //! version, this package will pin Solana dependencies to the above version.
 //!
+//! See this crates's [README] for more information about MSRV and feature flags.
+//!
 //! # Details
 //!
 //! Here are some ways of using these tools to write your first program.
@@ -381,6 +383,7 @@
 //! [NextEnumeratedAccountOptions]: crate::account_info::NextEnumeratedAccountOptions
 //! [NoStdAccountInfo]: solana_nostd_entrypoint::NoStdAccountInfo
 //! [Payer]: crate::account_info::Payer
+//! [README]: https://crates.io/crates/sealevel-tools
 //! [Signer]: crate::account_info::Signer
 //! [WritableAccount]: crate::account_info::WritableAccount
 //! [anchor-lang]: https://docs.rs/anchor-lang/latest/anchor_lang/
