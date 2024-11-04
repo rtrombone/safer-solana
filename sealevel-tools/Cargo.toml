@@ -34,7 +34,6 @@ solana-nostd-entrypoint.workspace = true
 solana-program.workspace = true
 spl-token = { optional = true, workspace = true }
 spl-token-2022 = { optional = true, workspace = true }
-thiserror.workspace = true
 
 [dev-dependencies]
 spl-discriminator.workspace = true

@@ -3288,7 +3288,6 @@ dependencies = [
  "spl-discriminator 0.3.0",
  "spl-token",
  "spl-token-2022 3.0.4",
- "thiserror",
 ]
 
 [[package]]

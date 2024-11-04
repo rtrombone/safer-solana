@@ -26,7 +26,6 @@ solana-sdk = "^1.18"
 spl-discriminator = "0.3"
 spl-token = { version = "^4.0", features = ["no-entrypoint"] }
 spl-token-2022 = { version = "^3.0", features = ["no-entrypoint"] }
-thiserror = "1.0"
 
 [profile.release]
 overflow-checks = true
