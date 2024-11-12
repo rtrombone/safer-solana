@@ -1,16 +1,18 @@
 //! Utilities for PDAs (program-derived accounts) like deriving PDA addresses.
 
-use solana_program::pubkey::Pubkey;
+use crate::pubkey::Pubkey;
 
 /// Simple trait to derive a PDA address for a type given some seeds.
 ///
 /// ### Example
 ///
 /// ```
-/// use sealevel_tools::pda::{DeriveAddress, ToSeed};
-/// use solana_program::{declare_id, pubkey::Pubkey};
+/// use sealevel_tools::{
+///     pda::{DeriveAddress, ToSeed},
+///     pubkey::Pubkey,
+/// };
 ///
-/// declare_id!("ThingProcessor11111111111111111111111111111");
+/// sealevel_tools::declare_id!("ThingProcessor11111111111111111111111111111");
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// pub struct IdentifiableThing {

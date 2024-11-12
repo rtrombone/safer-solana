@@ -1,4 +1,4 @@
-//! CPI for either SPL Token or SPL Token 2022 programs.
+//! CPI for either SPL Token or Token Extensions programs.
 //!
 //! ### Notes
 //!
@@ -16,10 +16,10 @@ mod burn;
 mod close_account;
 mod create_mint;
 mod create_token_account;
+pub mod extensions;
 mod freeze_account;
 #[cfg(feature = "alloc")]
 mod get_account_data_size;
-mod initialize_immutable_owner;
 mod mint_to;
 mod revoke;
 mod set_authority;
@@ -35,7 +35,6 @@ pub use create_token_account::*;
 pub use freeze_account::*;
 #[cfg(feature = "alloc")]
 pub use get_account_data_size::*;
-pub use initialize_immutable_owner::*;
 pub use mint_to::*;
 pub use revoke::*;
 pub use set_authority::*;
@@ -47,7 +46,18 @@ pub use spl_token_2022::{extension::ExtensionType, instruction::AuthorityType};
 
 use core::mem::size_of;
 
-use solana_program::pubkey::Pubkey;
+use crate::{error::SealevelToolsError, program_pack::Pack, pubkey::Pubkey};
+
+const BASE_WITH_EXTENSIONS_LEN: usize = spl_token_2022::state::Account::LEN // base size
+    + size_of::<u8>(); // account type size
+
+const EMPTY_EXTENSION_LEN: usize = 2 // type
+    + 2; // length
+
+const ERROR_EXPECTED_TOKEN_PROGRAM: SealevelToolsError<'static> =
+    SealevelToolsError::Cpi(&["Expected legacy SPL Token or Token Extensions program as ID"]);
+const ERROR_EXTENSIONS_UNSUPPORTED: SealevelToolsError<'static> =
+    SealevelToolsError::Cpi(&["Extensions only supported with SPL Token Extensions program"]);
 
 const IX_AMOUNT_DATA_LEN: usize = 1 // selector
     + size_of::<u64>(); // amount

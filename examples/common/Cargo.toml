@@ -6,6 +6,8 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-
 [dependencies]
+solana-banks-interface.workspace = true
 solana-program.workspace = true
+solana-sdk.workspace = true
+solana-program-test.workspace = true

@@ -1,10 +1,22 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{program_error::ProgramError, program_pack::Pack, pubkey::Pubkey};
+use core::mem::size_of;
 
 use crate::{
     account_info::{is_any_token_program_id, Account},
     cpi::{system_program::CreateAccount, CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    program_error::ProgramError,
+    program_pack::Pack,
+    pubkey::Pubkey,
+    spl_token_2022::{
+        extension::{
+            non_transferable::NonTransferable, transfer_fee::TransferFeeConfig,
+            transfer_hook::TransferHook, BaseStateWithExtensions, PodStateWithExtensions,
+        },
+        pod::PodMint,
+    },
 };
+
+use super::EMPTY_EXTENSION_LEN;
 
 /// Arguments to create a token account for a specific mint with a specified owner. This method
 /// creates an account for one of the Token programs and initializes it as a token account.
@@ -14,13 +26,13 @@ use crate::{
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, try_next_enumerated_account_info, AnyTokenProgram,
-///         NextEnumeratedAccountOptions, Payer, WritableAccount,
+///         try_next_enumerated_account, try_next_enumerated_account_info, TokenProgram,
+///         EnumeratedAccountConstraints, Payer, WritableAccount,
 ///     },
 ///     cpi::token_program::CreateTokenAccount,
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
@@ -39,7 +51,7 @@ use crate::{
 ///     // Next account must be writable data account matching PDA address.
 ///     let (_, new_token_account) = try_next_enumerated_account::<WritableAccount>(
 ///         &mut accounts_iter,
-///         NextEnumeratedAccountOptions {
+///         EnumeratedAccountConstraints {
 ///             key: Some(&new_token_addr),
 ///             ..Default::default()
 ///         },
@@ -58,42 +70,29 @@ use crate::{
 ///
 ///     // Next account is which token program to use.
 ///     let (_, token_program) =
-///         try_next_enumerated_account::<AnyTokenProgram>(&mut accounts_iter, Default::default())?;
+///         try_next_enumerated_account::<TokenProgram>(&mut accounts_iter, Default::default())?;
 ///
 ///     CreateTokenAccount {
 ///         payer: payer.as_cpi_authority(),
 ///         token_account: new_token_account.as_cpi_authority(Some(&[b"token", &[new_token_bump]])),
 ///         mint: &mint_account,
 ///         token_account_owner: token_account_owner.key(),
-///         opts: Default::default(),
+///         immutable_owner: true,
 ///     }
 ///     .try_into_invoke()?;
 ///
 ///     Ok(())
 /// }
 /// ```
-pub struct CreateTokenAccount<'a, 'b> {
+pub struct CreateTokenAccount<'a, 'b: 'a> {
     pub payer: CpiAuthority<'a, 'b>,
     pub token_account: CpiAuthority<'a, 'b>,
-    pub mint: &'a NoStdAccountInfo,
-    pub token_account_owner: &'b Pubkey,
-    pub opts: CreateTokenAccountOptions,
+    pub mint: &'b NoStdAccountInfo,
+    pub token_account_owner: &'a Pubkey,
+    pub immutable_owner: bool,
 }
 
-/// Optional arguments for [CreateTokenAccount].
-#[derive(Debug, Default)]
-pub struct CreateTokenAccountOptions {
-    /// If false, the initialize immutable owner instruction will be used to prevent the owner from
-    /// being changed in the future. This argument does not apply for the Legacy Token program.
-    pub mutable_owner: bool,
-
-    /// Override lamports sent to the token account. This argument can be useful in case more
-    /// extensions will be added in subsequent CPI calls. Setting this to None will use the minimum
-    /// required for rent.
-    pub lamports: Option<u64>,
-}
-
-impl<'a, 'b> CreateTokenAccount<'a, 'b> {
+impl<'a, 'b: 'a> CreateTokenAccount<'a, 'b> {
     /// Try to consume arguments to perform CPI calls.
     #[inline(always)]
     pub fn try_into_invoke(self) -> Result<Account<'a, true>, ProgramError> {
@@ -102,46 +101,86 @@ impl<'a, 'b> CreateTokenAccount<'a, 'b> {
             token_account,
             mint,
             token_account_owner,
-            opts:
-                CreateTokenAccountOptions {
-                    mutable_owner,
-                    lamports,
-                },
+            immutable_owner,
         } = self;
 
         let token_program_id = mint.owner();
 
-        if !is_any_token_program_id(token_program_id) {
-            return Err(ProgramError::InvalidAccountData);
-        }
+        // Do any of these mint extensions exist? If so, need to allocate enough space for the
+        // token account counterparts.
+        let (has_transfer_fee, has_non_transferable, has_transfer_hook) = {
+            let mint_data = mint.try_borrow_data()?;
+            let mint_state = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
 
-        let token_account = if token_program_id == &spl_token::ID || mutable_owner {
-            // Create the token account by assigning it to the token program.
-            CreateAccount {
-                payer,
-                to: token_account,
-                program_id: token_program_id,
-                space: Some(spl_token_2022::state::Account::LEN),
-                lamports,
-            }
-            .try_into_invoke()?
-        } else {
-            // Create the token account by assigning it to the token program.
-            let token_account = CreateAccount {
-                payer,
-                to: token_account,
-                program_id: token_program_id,
-                // Caching the size of a token account with immutable owner to avoid having to
-                // invoke the get account data size instruction.
-                space: Some(170),
-                lamports,
-            }
-            .try_into_invoke()?;
-
-            super::_invoke_initialize_immutable_owner(token_program_id, &token_account);
-
-            token_account
+            (
+                mint_state.get_extension::<TransferFeeConfig>().is_ok(),
+                mint_state.get_extension::<NonTransferable>().is_ok(),
+                mint_state.get_extension::<TransferHook>().is_ok(),
+            )
         };
+
+        let token_account =
+            if has_transfer_fee || has_non_transferable || has_transfer_hook || immutable_owner {
+                if token_program_id != &spl_token_2022::ID {
+                    return Err(super::ERROR_EXTENSIONS_UNSUPPORTED.into());
+                }
+
+                // Add to this depending on which extensions exist on the mint.
+                let mut total_space = super::BASE_WITH_EXTENSIONS_LEN;
+
+                if has_transfer_fee {
+                    total_space += {
+                        EMPTY_EXTENSION_LEN // type + length
+                        + size_of::<u64>() // withheld_amount
+                    };
+                }
+                // Non-transferable accounts have both non-transferable and immutable owner.
+                if has_non_transferable {
+                    total_space += 2 * EMPTY_EXTENSION_LEN;
+                } else if immutable_owner {
+                    total_space += EMPTY_EXTENSION_LEN;
+                }
+                if has_transfer_hook {
+                    total_space += {
+                        EMPTY_EXTENSION_LEN // type + length
+                        + size_of::<bool>() // transferring
+                    };
+                }
+
+                // Create the token account by assigning it to the token program.
+                let token_account = CreateAccount {
+                    payer,
+                    to: token_account,
+                    program_id: token_program_id,
+                    space: Some(total_space),
+                    lamports: None,
+                }
+                .try_into_invoke()?;
+
+                if !has_non_transferable && immutable_owner {
+                    super::extensions::InitializeImmutableOwner {
+                        token_program_id,
+                        account: &token_account,
+                    }
+                    .into_invoke();
+                }
+
+                token_account
+            } else {
+                if !is_any_token_program_id(token_program_id) {
+                    return Err(super::ERROR_EXPECTED_TOKEN_PROGRAM.into());
+                }
+
+                // Create the token account by assigning it to the token program.
+                CreateAccount {
+                    payer,
+                    to: token_account,
+                    program_id: token_program_id,
+                    space: Some(spl_token_2022::state::Account::LEN),
+                    lamports: None,
+                }
+                .try_into_invoke()?
+            };
 
         _invoke_initialize_account3(token_program_id, &token_account, mint, token_account_owner);
 
@@ -157,14 +196,14 @@ impl<'a, 'b> CreateTokenAccount<'a, 'b> {
 ///
 /// It is preferred to use [CreateTokenAccount] instead of this method because it will create
 /// the account and initialize it as a token account in one action.
-pub struct InitializeAccount3<'a> {
+pub struct InitializeAccount<'a> {
     pub token_program_id: &'a Pubkey,
     pub account: &'a NoStdAccountInfo,
     pub mint: &'a NoStdAccountInfo,
     pub owner: &'a Pubkey,
 }
 
-impl<'a> InitializeAccount3<'a> {
+impl<'a> InitializeAccount<'a> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

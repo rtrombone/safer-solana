@@ -1,10 +1,12 @@
 use alloc::vec::Vec;
 
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::pubkey::Pubkey;
-use spl_token_2022::extension::ExtensionType;
+use crate::{
+    cpi::{checked_return_data, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    pubkey::Pubkey,
+};
 
-use crate::cpi::{checked_return_data, CpiInstruction};
+use super::ExtensionType;
 
 /// Arguments for the get account data size instruction on the specified Token program, which
 /// retrieves the size of a token account data for a mint.

@@ -1,18 +1,19 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::pubkey::Pubkey;
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    pubkey::Pubkey,
+};
 
 /// Arguments for the sync native instruction on the specified Token program, which synchronizes the
 /// amount (balance) on the token account with the number of excess lamports on the token account.
 /// Performing this call is effectively "wrapping" SOL as the mint representation of SOL.
-pub struct SyncNative<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub source: &'a NoStdAccountInfo,
+pub struct SyncNative<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
+    pub source: &'b NoStdAccountInfo,
     pub authority: CpiAuthority<'a, 'b>,
 }
 
-impl<'a, 'b> SyncNative<'a, 'b> {
+impl<'a, 'b: 'a> SyncNative<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

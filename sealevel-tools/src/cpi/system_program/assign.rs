@@ -1,15 +1,16 @@
-use solana_program::pubkey::Pubkey;
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    pubkey::Pubkey,
+};
 
 /// Arguments for the assign instruction on the System program, which assigns ownership of a
 /// System-owned account to another program.
-pub struct Assign<'a, 'b> {
+pub struct Assign<'a, 'b: 'a> {
     pub to: CpiAuthority<'a, 'b>,
-    pub owner: &'b Pubkey,
+    pub owner: &'a Pubkey,
 }
 
-impl<'a, 'b> Assign<'a, 'b> {
+impl<'a, 'b: 'a> Assign<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

@@ -1,22 +1,23 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::pubkey::Pubkey;
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    pubkey::Pubkey,
+};
 
 /// Arguments for the create instruction on an Associated Token Account program, which creates a
 /// token account with an address seeded by its owner and mint.
-pub struct Create<'a, 'b> {
-    pub associated_token_account_program_id: &'b Pubkey,
+pub struct Create<'a, 'b: 'a> {
+    pub associated_token_account_program_id: &'a Pubkey,
     pub payer: CpiAuthority<'a, 'b>,
-    pub associated_account: &'a NoStdAccountInfo,
-    pub account_owner: &'a NoStdAccountInfo,
-    pub mint: &'a NoStdAccountInfo,
-    pub system_program: &'a NoStdAccountInfo,
-    pub token_program: &'a NoStdAccountInfo,
+    pub associated_account: &'b NoStdAccountInfo,
+    pub account_owner: &'b NoStdAccountInfo,
+    pub mint: &'b NoStdAccountInfo,
+    pub system_program: &'b NoStdAccountInfo,
+    pub token_program: &'b NoStdAccountInfo,
     pub idempotent: bool,
 }
 
-impl<'a, 'b> Create<'a, 'b> {
+impl<'a, 'b: 'a> Create<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

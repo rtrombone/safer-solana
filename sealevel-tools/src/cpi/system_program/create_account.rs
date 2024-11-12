@@ -1,11 +1,13 @@
 use core::mem::size_of;
 
-use solana_program::{program_error::ProgramError, pubkey::Pubkey, rent::Rent, sysvar::Sysvar};
-
 use crate::{
     account::AccountSerde,
     account_info::Account,
     cpi::{CpiAuthority, CpiInstruction},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    rent::Rent,
+    sysvar::Sysvar,
 };
 
 /// Arguments to create an account reliably. If the account already has lamports, it will be topped
@@ -17,13 +19,13 @@ use crate::{
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, Program,
+///         try_next_enumerated_account, EnumeratedAccountConstraints, Payer, Program,
 ///         WritableAccount,
 ///     },
 ///     cpi::system_program::CreateAccount,
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
@@ -42,7 +44,7 @@ use crate::{
 ///     // Next account must be writable data account matching PDA address.
 ///     let (_, new_account) = try_next_enumerated_account::<WritableAccount>(
 ///         &mut accounts_iter,
-///         NextEnumeratedAccountOptions {
+///         EnumeratedAccountConstraints {
 ///             key: Some(&new_thing_addr),
 ///             ..Default::default()
 ///         },
@@ -63,18 +65,18 @@ use crate::{
 ///
 /// Use [Self::try_invoke_and_serialize] to create a new data account and serialize data to it.
 /// ```
-/// use borsh::{BorshDeserialize, BorshSerialize};
 /// use sealevel_tools::{
+///     borsh::{BorshDeserialize, BorshSerialize},
 ///     account::{AccountSerde, BorshAccountSchema},
 ///     account_info::{
-///         try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, Program,
+///         try_next_enumerated_account, EnumeratedAccountConstraints, Payer, Program,
 ///         WritableAccount,
 ///     },
 ///     cpi::system_program::CreateAccount,
 ///     discriminator::{Discriminate, Discriminator},
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// #[derive(Debug, BorshDeserialize, BorshSerialize)]
 /// pub struct Thing {
@@ -103,7 +105,7 @@ use crate::{
 ///     // Next account must be writable data account matching PDA address.
 ///     let (_, new_account) = try_next_enumerated_account::<WritableAccount>(
 ///         &mut accounts_iter,
-///         NextEnumeratedAccountOptions {
+///         EnumeratedAccountConstraints {
 ///             key: Some(&new_thing_addr),
 ///             ..Default::default()
 ///         },
@@ -123,7 +125,7 @@ use crate::{
 ///     Ok(())
 /// }
 /// ```
-pub struct CreateAccount<'a, 'b> {
+pub struct CreateAccount<'a, 'b: 'a> {
     /// The account that will pay for the rent.
     ///
     /// ### Notes
@@ -140,7 +142,7 @@ pub struct CreateAccount<'a, 'b> {
     pub to: CpiAuthority<'a, 'b>,
 
     /// The program to assign the account to.
-    pub program_id: &'b Pubkey,
+    pub program_id: &'a Pubkey,
 
     /// The space to allocate for the account. If [None], defaults to zero for
     /// [Self::try_into_invoke] and will be determined by [AccountSerde::try_account_space] for
@@ -150,10 +152,10 @@ pub struct CreateAccount<'a, 'b> {
     pub lamports: Option<u64>,
 }
 
-impl<'a, 'b> CreateAccount<'a, 'b> {
+impl<'a, 'b: 'a> CreateAccount<'a, 'b> {
     /// Try to consume arguments to perform CPI calls.
     #[inline(always)]
-    pub fn try_into_invoke(self) -> Result<Account<'a, true>, ProgramError> {
+    pub fn try_into_invoke(self) -> Result<Account<'b, true>, ProgramError> {
         let Self {
             payer,
             to,

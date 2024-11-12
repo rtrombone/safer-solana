@@ -1,16 +1,17 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+};
 
-use crate::cpi::{CpiAuthority, CpiInstruction};
-
-/// Arguments for the transfer instruction on the System program, which transfers lamports between
-/// two accounts.
-pub struct Transfer<'a, 'b> {
+/// Arguments for the transfer instruction on the System program, which moves lamports between two
+/// accounts.
+pub struct Transfer<'a, 'b: 'a> {
     pub from: CpiAuthority<'a, 'b>,
-    pub to: &'a NoStdAccountInfo,
+    pub to: &'b NoStdAccountInfo,
     pub lamports: u64,
 }
 
-impl<'a, 'b> Transfer<'a, 'b> {
+impl<'a, 'b: 'a> Transfer<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

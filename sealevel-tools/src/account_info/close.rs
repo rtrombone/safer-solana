@@ -1,5 +1,4 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::entrypoint::ProgramResult;
+use crate::entrypoint::{NoStdAccountInfo, ProgramResult};
 
 /// Arguments for [try_close_account].
 pub struct CloseAccount<'a> {

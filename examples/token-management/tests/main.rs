@@ -1,9 +1,8 @@
 use example_token_management::{
-    instruction::{ExtensionTypes, ProgramInstruction},
+    instruction::{ExtensionTypes, InitMintWithExtensionsData, ProgramInstruction},
     state, ID,
 };
-use examples_common::program_failed;
-use solana_banks_interface::TransactionMetadata;
+use examples_common::{is_compute_units_within, is_program_failure, TestResult, TestSuccess};
 use solana_program_test::{tokio, BanksClient, ProgramTest};
 use solana_sdk::{
     hash::Hash,
@@ -17,60 +16,82 @@ use solana_sdk::{
     transaction_context::TransactionReturnData,
 };
 use spl_token_2022::{
-    extension::{
-        immutable_owner::ImmutableOwner, BaseStateWithExtensions, ExtensionType,
-        StateWithExtensionsOwned,
-    },
+    extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned},
     state::{Account, Mint},
 };
 
+const CU_TOLERANCE: u64 = 50;
 const DEFAULT_OWNER: Pubkey = solana_sdk::pubkey!("Defau1towner1111111111111111111111111111111");
 
 #[tokio::test]
 async fn test_init_mint_token_program() {
     let decimals = 9;
 
-    let TestResult { tx_meta, .. } = InitMintTest::set_up(
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
         spl_token::ID,
         decimals,
         None, // freeze_authority
+        None, // extensions
     )
     .await
-    .into_success()
-    .await;
+    .run()
+    .await
+    .success()
+    .unwrap();
     // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
-    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,200
-    // CU. The total adjustment is 6,000 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 7_856);
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_400,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
 async fn test_init_token_account_token_program() {
     let owner = DEFAULT_OWNER;
-    let immutable = false;
+    let immutable_owner = false;
 
-    let TestResult { tx_meta, .. } = InitTokenAccountTest::set_up(spl_token::ID, owner, immutable)
-        .await
-        .into_success()
-        .await;
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token::ID,
+        owner,
+        immutable_owner,
+        None, // mint_extensions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
     // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
     // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
-    // 1,200 CU. The total adjustment is 9,600 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 10_355);
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        8050,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
 async fn test_get_account_data_size_token_program() {
     let extensions = [ExtensionType::ImmutableOwner];
 
-    let TestResult { tx_meta, .. } = GetAccountDataSizeTest::set_up(spl_token::ID, &extensions)
+    let TestSuccess { tx_meta, .. } = GetAccountDataSizeTest::set_up(spl_token::ID, &extensions)
         .await
-        .into_success()
-        .await;
+        .run()
+        .await
+        .success()
+        .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 3_217);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        3_230,
+        CU_TOLERANCE
+    ));
     assert_eq!(
         tx_meta.return_data,
         Some(TransactionReturnData {
@@ -86,15 +107,21 @@ async fn test_mint_to_token_program() {
     let amount = 420_420;
     let optimized = true;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         MintToTest::set_up(spl_token::ID, destination_owner, amount, optimized)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // NOTE: Mint authority bump is 255, which requires 1 iteration to find the mint authority key.
-    // Each bump iteration costs 1,200 CU. The total adjustment is 1,200 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 6_361);
+    // Each bump iteration costs 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_090,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -103,15 +130,21 @@ async fn test_suboptimal_mint_to_token_program() {
     let amount = 420_420;
     let optimized = false;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         MintToTest::set_up(spl_token::ID, destination_owner, amount, optimized)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // NOTE: Mint authority bump is 255, which requires 1 iteration to find the mint authority key.
-    // Each bump iteration costs 1,200 CU. The total adjustment is 1,200 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 6_783);
+    // Each bump iteration costs 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_600,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -119,12 +152,18 @@ async fn test_burn_token_program() {
     let source_owner = Keypair::new();
     let amount = 420_420;
 
-    let TestResult { tx_meta, .. } = BurnTest::set_up(spl_token::ID, &source_owner, amount)
+    let TestSuccess { tx_meta, .. } = BurnTest::set_up(spl_token::ID, &source_owner, amount)
         .await
-        .into_success()
-        .await;
+        .run()
+        .await
+        .success()
+        .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 6_202);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        6_230,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -133,13 +172,19 @@ async fn test_transfer_token_program() {
     let destination_owner = Pubkey::new_unique();
     let amount = 420_420;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         TransferTest::set_up(spl_token::ID, &source_owner, destination_owner, amount)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 6_121);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        6_150,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -148,13 +193,19 @@ async fn test_transfer_checked_token_program() {
     let destination_owner = Pubkey::new_unique();
     let amount = 420_420;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         TransferCheckedTest::set_up(spl_token::ID, &source_owner, destination_owner, amount)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 7_787);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        7_900,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -163,74 +214,521 @@ async fn test_approve_token_program() {
     let delegate = Pubkey::new_unique();
     let amount = 420_420;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         ApproveTest::set_up(spl_token::ID, &source_owner, delegate, amount)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 4_401);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        4_425,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
 async fn test_revoke_token_program() {
     let source_owner = Keypair::new();
 
-    let TestResult { tx_meta, .. } = RevokeTest::set_up(spl_token::ID, &source_owner)
+    let TestSuccess { tx_meta, .. } = RevokeTest::set_up(spl_token::ID, &source_owner)
         .await
-        .into_success()
-        .await;
+        .run()
+        .await
+        .success()
+        .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 4_039);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        4_060,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
 async fn test_init_mint_token_2022_program() {
     let decimals = 9;
 
-    let TestResult { tx_meta, .. } = InitMintTest::set_up(
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
         spl_token_2022::ID,
         decimals,
         None, // freeze_authority
+        None, // extensions
     )
     .await
-    .into_success()
-    .await;
+    .run()
+    .await
+    .success()
+    .unwrap();
     // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
-    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,200
-    // CU. The total adjustment is 6,000 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 8_224);
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        5_000,
+        CU_TOLERANCE
+    ));
+}
+
+#[tokio::test]
+async fn test_init_mint_with_extensions() {
+    let decimals = 9;
+
+    // Add each extension separately.
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            close_authority: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_900,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            group_pointer: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_550,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            group_member_pointer: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_550,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            metadata_pointer: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_600,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            non_transferable: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_450,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            permanent_delegate: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_550,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            transfer_fee: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        8_550,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            transfer_hook: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_600,
+        CU_TOLERANCE
+    ));
+
+    // Now add them all.
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            close_authority: true,
+            group_pointer: true,
+            group_member_pointer: true,
+            metadata_pointer: true,
+            non_transferable: true,
+            permanent_delegate: true,
+            transfer_fee: true,
+            transfer_hook: true,
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        25_500,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
 async fn test_init_token_account_token_2022_program() {
     let owner = DEFAULT_OWNER;
-    let immutable = false;
+    let immutable_owner = false;
 
-    let TestResult { tx_meta, .. } =
-        InitTokenAccountTest::set_up(spl_token_2022::ID, owner, immutable)
-            .await
-            .into_success()
-            .await;
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        immutable_owner,
+        None, // mint_extentions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
     // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
     // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
-    // 1,200 CU. The total adjustment is 9,600 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 10_498);
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        5_250,
+        CU_TOLERANCE
+    ));
+}
+
+#[tokio::test]
+async fn test_init_token_account_with_extensions() {
+    let owner = DEFAULT_OWNER;
+
+    // Add each extension separately.
+
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        false, // immutable_owner
+        Some(MintExtensionsForTest {
+            transfer_fee: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
+    // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_500,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        false, // immutable_owner
+        Some(MintExtensionsForTest {
+            non_transferable: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
+    // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_650,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        false, // immutable_owner
+        Some(MintExtensionsForTest {
+            transfer_hook: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
+    // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_500,
+        CU_TOLERANCE
+    ));
+
+    // With immutable owner.
+
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        true, // immutable_owner
+        Some(MintExtensionsForTest {
+            transfer_fee: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
+    // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        8_090,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        true, // immutable_owner
+        Some(MintExtensionsForTest {
+            non_transferable: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
+    // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_650,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        true, // immutable_owner
+        Some(MintExtensionsForTest {
+            transfer_hook: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
+    // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        8_090,
+        CU_TOLERANCE
+    ));
+
+    // Now add them all.
+
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        true, // immutable_owner
+        Some(MintExtensionsForTest {
+            transfer_fee: true,
+            non_transferable: true,
+            transfer_hook: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
+    // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_850,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
 async fn test_get_account_data_size_token_2022_program() {
     let extensions = [ExtensionType::ImmutableOwner];
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         GetAccountDataSizeTest::set_up(spl_token_2022::ID, &extensions)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 4_056);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        2_600,
+        CU_TOLERANCE
+    ));
     assert_eq!(
         tx_meta.return_data,
         Some(TransactionReturnData {
@@ -243,18 +741,28 @@ async fn test_get_account_data_size_token_2022_program() {
 #[tokio::test]
 async fn test_init_token_account_token_2022_program_immutable_owner() {
     let owner = DEFAULT_OWNER;
-    let immutable = true;
+    let immutable_owner = true;
 
-    let TestResult { tx_meta, .. } =
-        InitTokenAccountTest::set_up(spl_token_2022::ID, owner, immutable)
-            .await
-            .into_success()
-            .await;
+    let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        immutable_owner,
+        None, // mint_extensions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
     // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Token account bump
     // is 252, which requires 4 iterations to find the token account key. Each bump iteration costs
-    // 1,200 CU. The total adjustment is 9,600 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 13_538);
+    // 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_800,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -263,15 +771,21 @@ async fn test_mint_to_token_2022_program() {
     let amount = 420_420;
     let optimized = true;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         MintToTest::set_up(spl_token_2022::ID, destination_owner, amount, optimized)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // NOTE: Mint authority bump is 255, which requires 1 iteration to find the mint authority key.
-    // Each bump iteration costs 1,200 CU. The total adjustment is 1,200 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 6_900);
+    // Each bump iteration costs 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        2_600,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -280,15 +794,21 @@ async fn test_suboptimal_mint_to_token_2022_program() {
     let amount = 420_420;
     let optimized = false;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         MintToTest::set_up(spl_token_2022::ID, destination_owner, amount, optimized)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // NOTE: Mint authority bump is 255, which requires 1 iteration to find the mint authority key.
-    // Each bump iteration costs 1,200 CU. The total adjustment is 1,200 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 7_316);
+    // Each bump iteration costs 1,500 CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        3_050,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -296,12 +816,18 @@ async fn test_burn_token_2022_program() {
     let source_owner = Keypair::new();
     let amount = 420_420;
 
-    let TestResult { tx_meta, .. } = BurnTest::set_up(spl_token_2022::ID, &source_owner, amount)
+    let TestSuccess { tx_meta, .. } = BurnTest::set_up(spl_token_2022::ID, &source_owner, amount)
         .await
-        .into_success()
-        .await;
+        .run()
+        .await
+        .success()
+        .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 6_826);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        2_650,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -310,13 +836,19 @@ async fn test_transfer_token_2022_program() {
     let destination_owner = Pubkey::new_unique();
     let amount = 420_420;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         TransferTest::set_up(spl_token_2022::ID, &source_owner, destination_owner, amount)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 7_597);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        2_800,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -325,13 +857,19 @@ async fn test_transfer_checked_token_2022_program() {
     let destination_owner = Pubkey::new_unique();
     let amount = 420_420;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         TransferCheckedTest::set_up(spl_token_2022::ID, &source_owner, destination_owner, amount)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 9_984);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        4_100,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -340,25 +878,37 @@ async fn test_approve_token_2022_program() {
     let delegate = Pubkey::new_unique();
     let amount = 420_420;
 
-    let TestResult { tx_meta, .. } =
+    let TestSuccess { tx_meta, .. } =
         ApproveTest::set_up(spl_token_2022::ID, &source_owner, delegate, amount)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 4_902);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        2_450,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
 async fn test_revoke_token_2022_program() {
     let source_owner = Keypair::new();
 
-    let TestResult { tx_meta, .. } = RevokeTest::set_up(spl_token_2022::ID, &source_owner)
+    let TestSuccess { tx_meta, .. } = RevokeTest::set_up(spl_token_2022::ID, &source_owner)
         .await
-        .into_success()
-        .await;
+        .run()
+        .await
+        .success()
+        .unwrap();
     // No PDA addresses found, so no CU adjustments.
-    assert_eq!(tx_meta.compute_units_consumed, 4_527);
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        2_150,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -366,16 +916,26 @@ async fn test_init_mint_token_program_and_freeze_authority() {
     let decimals = 9;
     let freeze_authority = Pubkey::new_unique();
 
-    let TestResult { tx_meta, .. } =
-        InitMintTest::set_up(spl_token::ID, decimals, freeze_authority.into())
-            .await
-            .into_success()
-            .await;
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token::ID,
+        decimals,
+        freeze_authority.into(),
+        None, // extensions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
     // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
-    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,200
-    // CU. The total adjustment is 6,000 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 8_231);
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        6_500,
+        CU_TOLERANCE
+    ));
 }
 
 #[tokio::test]
@@ -383,32 +943,48 @@ async fn test_init_mint_token_2022_program_and_freeze_authority() {
     let decimals = 9;
     let freeze_authority = Pubkey::new_unique();
 
-    let TestResult { tx_meta, .. } =
-        InitMintTest::set_up(spl_token_2022::ID, decimals, freeze_authority.into())
-            .await
-            .into_success()
-            .await;
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        freeze_authority.into(),
+        None, // extensions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
     // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
-    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,200
-    // CU. The total adjustment is 6,000 CU.
-    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 8_585);
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        5_100,
+        CU_TOLERANCE
+    ));
 }
 
-pub struct TestResult {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub tx_meta: TransactionMetadata,
+struct InitMintTest {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    decimals: u8,
+    freeze_authority: Option<Pubkey>,
+    extensions: MintExtensionsForTest,
 }
 
-pub struct InitMintTest {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub token_program_id: Pubkey,
-    pub decimals: u8,
-    pub freeze_authority: Option<Pubkey>,
+#[derive(Default, Clone, Copy)]
+struct MintExtensionsForTest {
+    close_authority: bool,
+    group_pointer: bool,
+    group_member_pointer: bool,
+    metadata_pointer: bool,
+    non_transferable: bool,
+    permanent_delegate: bool,
+    transfer_fee: bool,
+    transfer_hook: bool,
 }
 
 impl InitMintTest {
@@ -416,6 +992,7 @@ impl InitMintTest {
         token_program_id: Pubkey,
         decimals: u8,
         freeze_authority: Option<Pubkey>,
+        extensions: Option<MintExtensionsForTest>,
     ) -> Self {
         let (banks_client, payer, recent_blockhash) =
             ProgramTest::new("example_token_management", ID, None)
@@ -429,10 +1006,11 @@ impl InitMintTest {
             token_program_id,
             decimals,
             freeze_authority,
+            extensions: extensions.unwrap_or_default(),
         }
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let Self {
             mut banks_client,
             payer,
@@ -440,7 +1018,31 @@ impl InitMintTest {
             token_program_id,
             decimals,
             freeze_authority,
+            extensions:
+                MintExtensionsForTest {
+                    close_authority,
+                    group_pointer,
+                    group_member_pointer,
+                    metadata_pointer,
+                    non_transferable,
+                    permanent_delegate,
+                    transfer_fee,
+                    transfer_hook,
+                },
         } = self;
+        dbg!(
+            token_program_id,
+            decimals,
+            freeze_authority,
+            close_authority,
+            group_pointer,
+            group_member_pointer,
+            metadata_pointer,
+            non_transferable,
+            permanent_delegate,
+            transfer_fee,
+            transfer_hook
+        );
 
         let (new_mint_addr, mint_bump) = state::find_mint_address();
         assert_eq!(mint_bump, 252);
@@ -453,10 +1055,18 @@ impl InitMintTest {
                 AccountMeta::new(new_mint_addr, false),
                 AccountMeta::new_readonly(system_program::ID, false),
             ],
-            data: borsh::to_vec(&ProgramInstruction::InitMint {
+            data: borsh::to_vec(&ProgramInstruction::InitMint(InitMintWithExtensionsData {
                 decimals,
                 freeze_authority,
-            })
+                close_authority,
+                group_pointer,
+                group_member_pointer,
+                metadata_pointer,
+                non_transferable,
+                permanent_delegate,
+                transfer_fee,
+                transfer_hook,
+            }))
             .unwrap(),
         };
         let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
@@ -468,7 +1078,10 @@ impl InitMintTest {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
 
         // Check that mint exists.
         let mint_account = banks_client
@@ -492,27 +1105,120 @@ impl InitMintTest {
             }
         );
 
-        TestResult {
+        let close_authority_result = mint_data
+                .get_extension::<spl_token_2022::extension::mint_close_authority::MintCloseAuthority>();
+        if close_authority {
+            let close_authority_data = close_authority_result.unwrap();
+            assert_eq!(close_authority_data.close_authority.0, mint_authority_addr);
+        } else {
+            assert!(close_authority_result.is_err());
+        }
+
+        let group_pointer_result =
+            mint_data.get_extension::<spl_token_2022::extension::group_pointer::GroupPointer>();
+        if group_pointer {
+            let group_pointer_data = group_pointer_result.unwrap();
+            assert_eq!(group_pointer_data.authority.0, mint_authority_addr);
+            assert_eq!(group_pointer_data.group_address.0, new_mint_addr);
+        } else {
+            assert!(group_pointer_result.is_err());
+        }
+
+        let group_member_pointer_result = mint_data
+            .get_extension::<spl_token_2022::extension::group_member_pointer::GroupMemberPointer>();
+        if group_member_pointer {
+            let group_member_pointer_data = group_member_pointer_result.unwrap();
+            assert_eq!(group_member_pointer_data.authority.0, mint_authority_addr);
+            assert_eq!(group_member_pointer_data.member_address.0, new_mint_addr);
+        } else {
+            assert!(group_member_pointer_result.is_err());
+        }
+
+        let metadata_pointer_result = mint_data
+            .get_extension::<spl_token_2022::extension::metadata_pointer::MetadataPointer>(
+        );
+        if metadata_pointer {
+            let metadata_pointer_data = metadata_pointer_result.unwrap();
+            assert_eq!(metadata_pointer_data.authority.0, mint_authority_addr);
+            assert_eq!(metadata_pointer_data.metadata_address.0, new_mint_addr);
+        } else {
+            assert!(metadata_pointer_result.is_err());
+        }
+
+        let non_transferable_result = mint_data
+            .get_extension::<spl_token_2022::extension::non_transferable::NonTransferable>(
+        );
+        if non_transferable {
+            assert!(non_transferable_result.is_ok());
+        } else {
+            assert!(non_transferable_result.is_err());
+        }
+
+        let permanent_delegate_result =
+            mint_data
+                .get_extension::<spl_token_2022::extension::permanent_delegate::PermanentDelegate>(
+                );
+        if permanent_delegate {
+            let permanent_delegate_data = permanent_delegate_result.unwrap();
+            assert_eq!(permanent_delegate_data.delegate.0, mint_authority_addr);
+        } else {
+            assert!(permanent_delegate_result.is_err());
+        }
+
+        let transfer_fee_config_result =
+            mint_data.get_extension::<spl_token_2022::extension::transfer_fee::TransferFeeConfig>();
+        if transfer_fee {
+            let transfer_fee_config_data = transfer_fee_config_result.unwrap();
+            assert_eq!(
+                transfer_fee_config_data.transfer_fee_config_authority.0,
+                mint_authority_addr
+            );
+            assert_eq!(
+                transfer_fee_config_data.withdraw_withheld_authority.0,
+                mint_authority_addr
+            );
+        } else {
+            assert!(transfer_fee_config_result.is_err());
+        }
+
+        let transfer_hook_result =
+            mint_data.get_extension::<spl_token_2022::extension::transfer_hook::TransferHook>();
+        if transfer_hook {
+            let transfer_hook_data = transfer_hook_result.unwrap();
+            assert_eq!(transfer_hook_data.authority.0, mint_authority_addr);
+            assert_eq!(transfer_hook_data.program_id.0, ID);
+        } else {
+            assert!(transfer_hook_result.is_err());
+        }
+
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }
 
-pub struct InitTokenAccountTest {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub token_program_id: Pubkey,
-    pub owner: Pubkey,
-    pub immutable: bool,
+struct InitTokenAccountTest {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    owner: Pubkey,
+    immutable_owner: bool,
+    mint_extensions: MintExtensionsForTest,
 }
 
 impl InitTokenAccountTest {
-    async fn set_up(token_program_id: Pubkey, owner: Pubkey, immutable: bool) -> Self {
-        let TestResult {
+    async fn set_up(
+        token_program_id: Pubkey,
+        owner: Pubkey,
+        immutable_owner: bool,
+        mint_extensions: Option<MintExtensionsForTest>,
+    ) -> Self {
+        let TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
@@ -521,10 +1227,13 @@ impl InitTokenAccountTest {
             token_program_id,
             9,    // decimals
             None, // freeze_authority
+            mint_extensions,
         )
         .await
-        .into_success()
-        .await;
+        .run()
+        .await
+        .success()
+        .unwrap();
 
         Self {
             banks_client,
@@ -532,19 +1241,35 @@ impl InitTokenAccountTest {
             recent_blockhash,
             token_program_id,
             owner,
-            immutable,
+            immutable_owner,
+            mint_extensions: mint_extensions.unwrap_or_default(),
         }
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let Self {
             mut banks_client,
             payer,
             recent_blockhash,
             token_program_id,
             owner,
-            immutable,
+            immutable_owner,
+            mint_extensions:
+                MintExtensionsForTest {
+                    transfer_fee,
+                    non_transferable,
+                    transfer_hook,
+                    ..
+                },
         } = self;
+        dbg!(
+            token_program_id,
+            owner,
+            immutable_owner,
+            transfer_fee,
+            non_transferable,
+            transfer_hook
+        );
 
         let (mint_addr, mint_bump) = state::find_mint_address();
         assert_eq!(mint_bump, 252);
@@ -564,8 +1289,11 @@ impl InitTokenAccountTest {
                 AccountMeta::new_readonly(token_program_id, false),
                 AccountMeta::new_readonly(system_program::ID, false),
             ],
-            data: borsh::to_vec(&ProgramInstruction::InitTokenAccount { owner, immutable })
-                .unwrap(),
+            data: borsh::to_vec(&ProgramInstruction::InitTokenAccount {
+                owner,
+                immutable_owner,
+            })
+            .unwrap(),
         };
         let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
         transaction.sign(&[&payer], recent_blockhash);
@@ -576,7 +1304,10 @@ impl InitTokenAccountTest {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
 
         // Check that token account exists.
         let token_account = banks_client
@@ -602,30 +1333,59 @@ impl InitTokenAccountTest {
             }
         );
 
-        let immutable_owner_result = token_account_data.get_extension::<ImmutableOwner>();
-        assert!(if immutable {
-            immutable_owner_result.is_ok()
+        let transfer_fee_amount_result = token_account_data
+            .get_extension::<spl_token_2022::extension::transfer_fee::TransferFeeAmount>(
+        );
+        if transfer_fee {
+            assert!(transfer_fee_amount_result.is_ok());
         } else {
-            immutable_owner_result.is_err()
-        });
+            assert!(transfer_fee_amount_result.is_err());
+        };
 
-        TestResult {
+        let non_transferable_account = token_account_data
+            .get_extension::<spl_token_2022::extension::non_transferable::NonTransferableAccount>(
+        );
+        let immutable_owner_result = token_account_data
+            .get_extension::<spl_token_2022::extension::immutable_owner::ImmutableOwner>(
+        );
+        if non_transferable {
+            assert!(non_transferable_account.is_ok());
+            assert!(immutable_owner_result.is_ok());
+        } else if immutable_owner {
+            assert!(non_transferable_account.is_err());
+            assert!(immutable_owner_result.is_ok());
+        } else {
+            assert!(non_transferable_account.is_err());
+            assert!(immutable_owner_result.is_err());
+        }
+
+        let transfer_hook_account = token_account_data
+            .get_extension::<spl_token_2022::extension::transfer_hook::TransferHookAccount>(
+        );
+        if transfer_hook {
+            assert!(transfer_hook_account.is_ok());
+        } else {
+            assert!(transfer_hook_account.is_err());
+        }
+
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }
 
-pub struct MintToTest {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub token_program_id: Pubkey,
-    pub destination_owner: Pubkey,
-    pub amount: u64,
-    pub optimized: bool,
+struct MintToTest {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    destination_owner: Pubkey,
+    amount: u64,
+    optimized: bool,
 }
 
 impl MintToTest {
@@ -635,15 +1395,17 @@ impl MintToTest {
         amount: u64,
         optimized: bool,
     ) -> Self {
-        let TestResult {
+        let TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             ..
-        } = InitTokenAccountTest::set_up(token_program_id, destination_owner, false)
+        } = InitTokenAccountTest::set_up(token_program_id, destination_owner, false, None)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
 
         Self {
             banks_client,
@@ -656,7 +1418,7 @@ impl MintToTest {
         }
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let Self {
             mut banks_client,
             payer,
@@ -712,9 +1474,9 @@ impl MintToTest {
                 AccountMeta::new_readonly(token_program_id, false),
             ],
             data: borsh::to_vec(&if optimized {
-                ProgramInstruction::MintTo { amount }
+                ProgramInstruction::MintTo(amount)
             } else {
-                ProgramInstruction::SuboptimalMintTo { amount }
+                ProgramInstruction::SuboptimalMintTo(amount)
             })
             .unwrap(),
         };
@@ -727,7 +1489,10 @@ impl MintToTest {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
 
         // Check the token account amount.
         let token_account_balance = StateWithExtensionsOwned::<Account>::unpack(
@@ -757,35 +1522,38 @@ impl MintToTest {
         .supply;
         assert_eq!(mint_supply, amount);
 
-        TestResult {
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }
 
-pub struct BurnTest<'a> {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub token_program_id: Pubkey,
-    pub source_owner: &'a Keypair,
-    pub amount: u64,
+struct BurnTest<'a> {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    source_owner: &'a Keypair,
+    amount: u64,
 }
 
 impl<'a> BurnTest<'a> {
     async fn set_up(token_program_id: Pubkey, source_owner: &'a Keypair, amount: u64) -> Self {
-        let TestResult {
+        let TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             ..
         } = MintToTest::set_up(token_program_id, source_owner.pubkey(), amount, true)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
 
         Self {
             banks_client,
@@ -797,7 +1565,7 @@ impl<'a> BurnTest<'a> {
         }
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let Self {
             mut banks_client,
             payer,
@@ -848,10 +1616,10 @@ impl<'a> BurnTest<'a> {
                 AccountMeta::new_readonly(source_owner.pubkey(), true),
                 AccountMeta::new_readonly(token_program_id, false),
             ],
-            data: borsh::to_vec(&ProgramInstruction::Burn { amount }).unwrap(),
+            data: borsh::to_vec(&ProgramInstruction::Burn(amount)).unwrap(),
         };
         let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-        transaction.sign(&[&payer, &source_owner], recent_blockhash);
+        transaction.sign(&[&payer, source_owner], recent_blockhash);
 
         let tx_meta = banks_client
             .process_transaction_with_metadata(transaction)
@@ -859,7 +1627,10 @@ impl<'a> BurnTest<'a> {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
 
         // Check the token account amount.
         let token_account_balance = StateWithExtensionsOwned::<Account>::unpack(
@@ -889,23 +1660,24 @@ impl<'a> BurnTest<'a> {
         .supply;
         assert_eq!(mint_supply, 0);
 
-        TestResult {
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }
 
-pub struct TransferTest<'a> {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub token_program_id: Pubkey,
-    pub source_owner: &'a Keypair,
-    pub destination_owner: Pubkey,
-    pub amount: u64,
+struct TransferTest<'a> {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    source_owner: &'a Keypair,
+    destination_owner: Pubkey,
+    amount: u64,
 }
 
 impl<'a> TransferTest<'a> {
@@ -915,17 +1687,19 @@ impl<'a> TransferTest<'a> {
         destination_owner: Pubkey,
         amount: u64,
     ) -> Self {
-        let TestResult {
+        let TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             ..
         } = MintToTest::set_up(token_program_id, source_owner.pubkey(), amount, true)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
 
-        let TestResult {
+        let TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
@@ -936,10 +1710,13 @@ impl<'a> TransferTest<'a> {
             recent_blockhash,
             token_program_id,
             owner: destination_owner,
-            immutable: false,
+            immutable_owner: false,
+            mint_extensions: Default::default(),
         }
-        .into_success()
-        .await;
+        .run()
+        .await
+        .success()
+        .unwrap();
 
         Self {
             banks_client,
@@ -952,7 +1729,7 @@ impl<'a> TransferTest<'a> {
         }
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let Self {
             mut banks_client,
             payer,
@@ -1004,10 +1781,10 @@ impl<'a> TransferTest<'a> {
                 AccountMeta::new_readonly(source_owner.pubkey(), true),
                 AccountMeta::new_readonly(token_program_id, false),
             ],
-            data: borsh::to_vec(&ProgramInstruction::Transfer { amount }).unwrap(),
+            data: borsh::to_vec(&ProgramInstruction::Transfer(amount)).unwrap(),
         };
         let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-        transaction.sign(&[&payer, &source_owner], recent_blockhash);
+        transaction.sign(&[&payer, source_owner], recent_blockhash);
 
         let tx_meta = banks_client
             .process_transaction_with_metadata(transaction)
@@ -1015,7 +1792,10 @@ impl<'a> TransferTest<'a> {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
 
         // Check the source token account amount.
         let token_account_balance = StateWithExtensionsOwned::<Account>::unpack(
@@ -1045,12 +1825,13 @@ impl<'a> TransferTest<'a> {
         .amount;
         assert_eq!(token_account_balance, amount);
 
-        TestResult {
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }
 
@@ -1066,7 +1847,7 @@ impl<'a> TransferCheckedTest<'a> {
         Self(TransferTest::set_up(token_program_id, source_owner, destination_owner, amount).await)
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let TransferTest {
             mut banks_client,
             payer,
@@ -1136,7 +1917,7 @@ impl<'a> TransferCheckedTest<'a> {
             data: borsh::to_vec(&ProgramInstruction::TransferChecked { amount, decimals }).unwrap(),
         };
         let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-        transaction.sign(&[&payer, &source_owner], recent_blockhash);
+        transaction.sign(&[&payer, source_owner], recent_blockhash);
 
         let tx_meta = banks_client
             .process_transaction_with_metadata(transaction)
@@ -1144,7 +1925,10 @@ impl<'a> TransferCheckedTest<'a> {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
 
         // Check the source token account amount.
         let token_account_balance = StateWithExtensionsOwned::<Account>::unpack(
@@ -1174,23 +1958,24 @@ impl<'a> TransferCheckedTest<'a> {
         .amount;
         assert_eq!(token_account_balance, amount);
 
-        TestResult {
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }
 
-pub struct ApproveTest<'a> {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub token_program_id: Pubkey,
-    pub source_owner: &'a Keypair,
-    pub delegated_authority: Pubkey,
-    pub amount: u64,
+struct ApproveTest<'a> {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    source_owner: &'a Keypair,
+    delegated_authority: Pubkey,
+    amount: u64,
 }
 
 impl<'a> ApproveTest<'a> {
@@ -1200,15 +1985,17 @@ impl<'a> ApproveTest<'a> {
         delegated_authority: Pubkey,
         amount: u64,
     ) -> Self {
-        let TestResult {
+        let TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             ..
-        } = InitTokenAccountTest::set_up(token_program_id, source_owner.pubkey(), false)
+        } = InitTokenAccountTest::set_up(token_program_id, source_owner.pubkey(), false, None)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
 
         Self {
             banks_client,
@@ -1221,7 +2008,7 @@ impl<'a> ApproveTest<'a> {
         }
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let Self {
             mut banks_client,
             payer,
@@ -1261,10 +2048,10 @@ impl<'a> ApproveTest<'a> {
                 AccountMeta::new_readonly(source_owner.pubkey(), true),
                 AccountMeta::new_readonly(token_program_id, false),
             ],
-            data: borsh::to_vec(&ProgramInstruction::Approve { amount }).unwrap(),
+            data: borsh::to_vec(&ProgramInstruction::Approve(amount)).unwrap(),
         };
         let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-        transaction.sign(&[&payer, &source_owner], recent_blockhash);
+        transaction.sign(&[&payer, source_owner], recent_blockhash);
 
         let tx_meta = banks_client
             .process_transaction_with_metadata(transaction)
@@ -1272,7 +2059,10 @@ impl<'a> ApproveTest<'a> {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
 
         // Check the token account delegate.
         let Account {
@@ -1292,21 +2082,22 @@ impl<'a> ApproveTest<'a> {
         assert_eq!(delegate, COption::Some(delegated_authority));
         assert_eq!(delegated_amount, amount);
 
-        TestResult {
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }
 
-pub struct RevokeTest<'a> {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub token_program_id: Pubkey,
-    pub source_owner: &'a Keypair,
+struct RevokeTest<'a> {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    source_owner: &'a Keypair,
 }
 
 impl<'a> RevokeTest<'a> {
@@ -1314,15 +2105,17 @@ impl<'a> RevokeTest<'a> {
         let delegated_authority = Pubkey::new_unique();
         let amount = 420_420;
 
-        let TestResult {
+        let TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             ..
         } = ApproveTest::set_up(token_program_id, source_owner, delegated_authority, amount)
             .await
-            .into_success()
-            .await;
+            .run()
+            .await
+            .success()
+            .unwrap();
 
         Self {
             banks_client,
@@ -1333,7 +2126,7 @@ impl<'a> RevokeTest<'a> {
         }
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let Self {
             mut banks_client,
             payer,
@@ -1373,7 +2166,7 @@ impl<'a> RevokeTest<'a> {
             data: borsh::to_vec(&ProgramInstruction::Revoke).unwrap(),
         };
         let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-        transaction.sign(&[&payer, &source_owner], recent_blockhash);
+        transaction.sign(&[&payer, source_owner], recent_blockhash);
 
         let tx_meta = banks_client
             .process_transaction_with_metadata(transaction)
@@ -1381,7 +2174,10 @@ impl<'a> RevokeTest<'a> {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
 
         // Check the token account delegate.
         let Account {
@@ -1401,26 +2197,27 @@ impl<'a> RevokeTest<'a> {
         assert!(delegate.is_none());
         assert_eq!(delegated_amount, 0);
 
-        TestResult {
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }
 
-pub struct GetAccountDataSizeTest<'a> {
-    pub banks_client: BanksClient,
-    pub payer: Keypair,
-    pub recent_blockhash: Hash,
-    pub token_program_id: Pubkey,
-    pub extensions: &'a [ExtensionType],
+struct GetAccountDataSizeTest<'a> {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    extensions: &'a [ExtensionType],
 }
 
 impl<'a> GetAccountDataSizeTest<'a> {
     async fn set_up(token_program_id: Pubkey, extensions: &'a [ExtensionType]) -> Self {
-        let TestResult {
+        let TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
@@ -1429,10 +2226,13 @@ impl<'a> GetAccountDataSizeTest<'a> {
             token_program_id,
             9,    // decimals
             None, // freeze_authority
+            None, // extensions
         )
         .await
-        .into_success()
-        .await;
+        .run()
+        .await
+        .success()
+        .unwrap();
 
         Self {
             banks_client,
@@ -1443,7 +2243,7 @@ impl<'a> GetAccountDataSizeTest<'a> {
         }
     }
 
-    async fn into_success(self) -> TestResult {
+    async fn run(self) -> TestResult {
         let Self {
             mut banks_client,
             payer,
@@ -1474,13 +2274,17 @@ impl<'a> GetAccountDataSizeTest<'a> {
             .unwrap()
             .metadata
             .unwrap();
-        assert!(!program_failed(&ID, &tx_meta.log_messages));
 
-        TestResult {
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
+
+        TestSuccess {
             banks_client,
             payer,
             recent_blockhash,
             tx_meta,
         }
+        .into()
     }
 }

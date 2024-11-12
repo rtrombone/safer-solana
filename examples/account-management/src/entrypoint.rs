@@ -1,6 +1,9 @@
 use borsh::BorshDeserialize;
-use solana_nostd_entrypoint::{basic_panic_impl, entrypoint_nostd, NoStdAccountInfo};
-use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
+use sealevel_tools::{
+    entrypoint::{basic_panic_impl, entrypoint_nostd, NoStdAccountInfo, ProgramResult},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
 
 use crate::{instruction::ProgramInstruction, processor};
 

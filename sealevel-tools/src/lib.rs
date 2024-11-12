@@ -3,11 +3,57 @@
 //! specific way of doing so. By using these tools, a developer can write a lightweight program with
 //! functionality found in other frameworks.
 //!
+//! Currently, this package leverages [sealevel_nostd_entrypoint], which is a fork of an optimized
+//! no-std program entrypoint library. Its contents are re-exported for convenience.
+//! ```
+//! use sealevel_tools::{
+//!     entrypoint::{NoStdAccountInfo, ProgramResult, entrypoint_nostd},
+//!     log::sol_log,
+//!     pubkey::Pubkey,
+//! };
 //!
-//! Currently, this package only supports Solana version ^1.18 to match Solana dependencies found in
-//! [solana_nostd_entrypoint], meaning that **this package does not yet support Solana 2.0**.
+//! pub fn process_instruction(
+//!     program_id: &Pubkey,
+//!     accounts: &[NoStdAccountInfo],
+//!     instruction_data: &[u8],
+//! ) -> ProgramResult {
+//!     // TODO: Check your program ID.
+//!     let _ = program_id;
 //!
-//! See this crates's [README] for more information about MSRV and feature flags.
+//!     // TODO: Check and use your accounts.
+//!     let _ = accounts;
+//!
+//!     // TODO: Check and use your data.
+//!     let _ = instruction_data;
+//!
+//!     sol_log("Hello, world!");
+//!
+//!     Ok(())
+//! }
+//!
+//! entrypoint_nostd!(process_instruction, 8);
+//! ```
+//!
+//! Also re-exported are the following modules from [solana_program]:
+//! - [clock] -- Working with slots and timestamps via `Clock::get()`.
+//! - [declare_id!](declare_id) -- Hard-coded ID for your program.
+//! - [instruction] -- Building instructions, which can be used with [cpi::invoke_signed].
+//! - [log] -- Writing information to program logs.
+//! - [msg!](msg) -- Useful for logging with formatting (used in conjunction with [alloc::format]).
+//! - [program_error] -- Useful for returning an error with a [Result] of a non-void type.
+//! - [program_memory] -- Useful low-level memory operations.
+//! - [program_pack] -- For [Pack](program_pack::Pack) trait.
+//! - [mod@pubkey] and [pubkey!]
+//! - [rent] -- Calculating rent for accounts via `Rent::get()`.
+//! - [sysvar] -- Needed for `T::get()` when working with sysvars.
+//!
+//! See this crate's [README] for more information about MSRV and feature flags.
+//!
+//! # Examples
+//!
+//! Check out the [safer-solana] repository for [working examples] of using this
+//! package. Below are some rudimentary examples of how to use some of these
+//! tools.
 //!
 //! # Details
 //!
@@ -51,14 +97,16 @@
 //! deserialized arguments of each instruction. NOTE: This example uses [borsh] for serde, but your
 //! program is not required to use it to decode instruction data.
 //! ```
-//! use borsh::{io, BorshDeserialize, BorshSerialize};
-//! use sealevel_tools::discriminator::Discriminator;
-//! use solana_nostd_entrypoint::{entrypoint_nostd, NoStdAccountInfo};
-//! use solana_program::{
-//!     entrypoint::ProgramResult, msg, program_error::ProgramError, pubkey::Pubkey,
+//! use sealevel_tools::{
+//!     borsh::{io, BorshDeserialize, BorshSerialize},
+//!     discriminator::Discriminator,
+//!     entrypoint::{entrypoint_nostd, NoStdAccountInfo, ProgramResult},
+//!     msg,
+//!     program_error::ProgramError,
+//!     pubkey::Pubkey,
 //! };
 //!
-//! solana_program::declare_id!("Examp1eThing1111111111111111111111111111111");
+//! sealevel_tools::declare_id!("Examp1eThing1111111111111111111111111111111");
 //!
 //! #[derive(Debug, BorshDeserialize, BorshSerialize)]
 //! # pub struct ThingArgs(u32);
@@ -159,8 +207,7 @@
 //! Instead of just logging using [msg!], you would use a processor method relevant for each
 //! instruction. For example, matching `DoSomething` would call an internal method resembling:
 //! ```
-//! # use solana_nostd_entrypoint::NoStdAccountInfo;
-//! # use solana_program::entrypoint::ProgramResult;
+//! # use sealevel_tools::entrypoint::{NoStdAccountInfo, ProgramResult};
 //! #
 //! fn process_do_something(accounts: &[NoStdAccountInfo], data: u64) -> ProgramResult {
 //!     // Do something useful here.
@@ -208,13 +255,15 @@
 //!
 //! Without a struct, you may iterate like so:
 //! ```
-//! # use sealevel_tools::account_info::{
-//! #   try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, WritableAccount
+//! # use sealevel_tools::{
+//! #   account_info::{
+//! #       try_next_enumerated_account, EnumeratedAccountConstraints, Payer, WritableAccount
+//! #   },
+//! #   entrypoint::{NoStdAccountInfo, ProgramResult},
+//! #   pubkey::Pubkey,
 //! # };
-//! # use solana_nostd_entrypoint::NoStdAccountInfo;
-//! # use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 //! #
-//! # solana_program::declare_id!("Examp1eThing1111111111111111111111111111111");
+//! # sealevel_tools::declare_id!("Examp1eThing1111111111111111111111111111111");
 //! #
 //! fn process(accounts: &[NoStdAccountInfo]) -> ProgramResult {
 //!     let mut accounts_iter = accounts.iter().enumerate();
@@ -229,7 +278,7 @@
 //!     // Second account is the new Thing.
 //!     let (_, new_thing_account) = try_next_enumerated_account::<WritableAccount>(
 //!         &mut accounts_iter,
-//!         NextEnumeratedAccountOptions {
+//!         EnumeratedAccountConstraints {
 //!             key: Some(&new_thing_addr),
 //!             ..Default::default()
 //!         },
@@ -241,7 +290,7 @@
 //!
 //! [try_next_enumerated_account] takes an enumerated iterator and
 //! returns tools-defined types, which are simple wrappers around [NoStdAccountInfo] (e.g.
-//! [Payer], which is a writable [Signer]. [NextEnumeratedAccountOptions] provide some optional
+//! [Payer], which is a writable [Signer]. [EnumeratedAccountConstraints] provide some optional
 //! constraints when plucking off the next account (e.g. verifying that the pubkey equals what you
 //! expect). In the above example, we are asserting that the new `Thing` account is a
 //! [WritableAccount], whose const bool value says that it is a writable account.
@@ -250,14 +299,17 @@
 //! via the [TakeAccounts] trait:
 //!
 //! ```
-//! # use sealevel_tools::account_info::{
-//! #   try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, TakeAccounts,
-//! #   WritableAccount
+//! # use sealevel_tools::{
+//! #   account_info::{
+//! #       try_next_enumerated_account, EnumeratedAccountConstraints, Payer, TakeAccounts,
+//! #       WritableAccount
+//! #   },
+//! #   entrypoint::NoStdAccountInfo,
+//! #   program_error::ProgramError,
+//! #   pubkey::Pubkey,
 //! # };
-//! # use solana_nostd_entrypoint::NoStdAccountInfo;
-//! # use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 //! #
-//! # solana_program::declare_id!("Examp1eThing1111111111111111111111111111111");
+//! # sealevel_tools::declare_id!("Examp1eThing1111111111111111111111111111111");
 //! #
 //! struct AddThingAccounts<'a> {
 //!     payer: (usize, Payer<'a>),
@@ -279,7 +331,7 @@
 //!
 //!         let (new_thing_index, new_thing_account) = try_next_enumerated_account(
 //!             iter,
-//!             NextEnumeratedAccountOptions {
+//!             EnumeratedAccountConstraints {
 //!                 key: Some(&new_thing_addr),
 //!                 ..Default::default()
 //!             },
@@ -299,7 +351,7 @@
 //! SDKs leverage. But when writing a program with these tools, the next best option is giving the
 //! index of the accounts array you passed into your transaction. [try_next_enumerated_account] has
 //! error handling that gives the user information about which account index failed any checks using
-//! the [NextEnumeratedAccountOptions].
+//! the [EnumeratedAccountConstraints].
 //!
 //! Also notice that we do not check that the System program is provided. You can add an explicit
 //! check for it (like how [anchor-lang] requires it). Or it can be assumed that it is one of the
@@ -312,13 +364,13 @@
 //! # use sealevel_tools::{
 //! #    account::{AccountSerde, BorshAccountSchema},
 //! #    account_info::{
-//! #      try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, WritableAccount
+//! #       try_next_enumerated_account, EnumeratedAccountConstraints, Payer, WritableAccount
 //! #    },
 //! #    cpi::system_program::CreateAccount,
 //! #    discriminator::{Discriminate, Discriminator},
+//! #    entrypoint::{NoStdAccountInfo, ProgramResult},
+//! #    pubkey::Pubkey,
 //! # };
-//! # use solana_nostd_entrypoint::NoStdAccountInfo;
-//! # use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 //! #
 //! # solana_program::declare_id!("Examp1eThing1111111111111111111111111111111");
 //! #
@@ -342,7 +394,7 @@
 //! #
 //! #     let (_, new_thing_account) = try_next_enumerated_account::<WritableAccount>(
 //! #         &mut accounts_iter,
-//! #         NextEnumeratedAccountOptions {
+//! #         EnumeratedAccountConstraints {
 //! #             key: Some(&new_thing_addr),
 //! #             ..Default::default()
 //! #         },
@@ -384,8 +436,8 @@
 //! [AccountInfo]: https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html
 //! [Accounts]: https://docs.rs/anchor-lang/latest/anchor_lang/trait.Accounts.html
 //! [Discriminator]: crate::discriminator::Discriminator
-//! [NextEnumeratedAccountOptions]: crate::account_info::NextEnumeratedAccountOptions
-//! [NoStdAccountInfo]: solana_nostd_entrypoint::NoStdAccountInfo
+//! [EnumeratedAccountConstraints]: crate::account_info::EnumeratedAccountConstraints
+//! [NoStdAccountInfo]: crate::entrypoint::NoStdAccountInfo
 //! [Payer]: crate::account_info::Payer
 //! [README]: https://crates.io/crates/sealevel-tools
 //! [Signer]: crate::account_info::Signer
@@ -394,26 +446,51 @@
 //! [anchor-lang]: https://docs.rs/anchor-lang/latest/anchor_lang/
 //! [msg!]: https://docs.rs/solana-program/latest/solana_program/macro.msg.html
 //! [next_account_info]: https://docs.rs/solana-program/latest/solana_program/account_info/fn.next_account_info.html
+//! [safer-solana]: https://github.com/rtrombone/safer-solana
 //! [spl-discriminator]: https://docs.rs/spl-discriminator/latest/spl_discriminator/
 //! [shank]: https://docs.rs/shank/latest/shank/
 //! [try_next_enumerated_account]: crate::account_info::try_next_enumerated_account
+//! [working examples]: https://github.com/rtrombone/safer-solana/tree/v0.5.0/examples/
 
 #![deny(dead_code, unused_imports, unused_mut)]
 #![no_std]
-
-#[cfg(feature = "alloc")]
-extern crate alloc;
 
 pub mod account;
 pub mod account_info;
 pub mod cpi;
 pub mod discriminator;
-pub mod error;
+mod error;
 pub mod pda;
 
+pub use error::SealevelToolsError;
+
+/// Re-export of [sealevel_nostd_entrypoint] and [solana_program::entrypoint::ProgramResult].
+///
+/// ### Notes
+///
+/// Because our package leverages this optimized no-std Solana entrypoint crate for account and CPI
+/// handling, its contents are re-exported here for convenience (so there is no need to add this
+/// dependency in your program).
+pub mod entrypoint {
+    pub use sealevel_nostd_entrypoint::{
+        basic_panic_impl, deserialize_nostd, deserialize_nostd_no_dup,
+        deserialize_nostd_no_dup_no_program, deserialize_nostd_no_program, entrypoint_nostd,
+        entrypoint_nostd_no_duplicates, entrypoint_nostd_no_duplicates_no_program,
+        entrypoint_nostd_no_program, noalloc_allocator, AccountInfoC, AccountMetaC, InstructionC,
+        NoStdAccountInfo, NoStdAccountInfoInner, RcRefCellInner, Ref, RefMut,
+    };
+    pub use solana_program::entrypoint::ProgramResult;
+}
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 #[cfg(feature = "borsh")]
-pub extern crate borsh;
+pub use borsh;
 #[cfg(feature = "token")]
-pub extern crate spl_token;
-#[cfg(feature = "token")]
-pub extern crate spl_token_2022;
+pub use spl_token_2022;
+
+pub use solana_program::{
+    clock, declare_id, instruction, log, msg, program_error, program_memory, program_pack, pubkey,
+    rent, sysvar,
+};

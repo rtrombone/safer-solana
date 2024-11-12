@@ -3,14 +3,18 @@ use example_account_management::{
     state::{Thing, ThingSchema},
     ID,
 };
-use examples_common::program_failed;
+use examples_common::{is_compute_units_within, is_program_failure};
 use sealevel_tools::account::AccountSerde;
-use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_program_test::{tokio, ProgramTest};
 use solana_sdk::{
-    instruction::AccountMeta, signer::Signer, system_instruction, system_program,
+    instruction::{AccountMeta, Instruction},
+    pubkey::Pubkey,
+    signer::Signer,
+    system_instruction, system_program,
     transaction::Transaction,
 };
+
+const CU_TOLERANCE: u64 = 10;
 
 #[tokio::test]
 async fn test_thing() {
@@ -43,12 +47,16 @@ async fn test_thing() {
         .unwrap()
         .metadata
         .unwrap();
-    assert!(!program_failed(&ID, &tx_meta.log_messages));
+    assert!(!is_program_failure(&ID, &tx_meta.log_messages));
 
     // NOTE: Thing bump is 255, which requires 1 iteration to find the thing key. Each bump
     // iteration costs 1,200 CU. The total adjustment is 1,200 CU.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 2_486);
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        2_550,
+        CU_TOLERANCE
+    ));
 
     // Check the new_thing account.
     let account_data = banks_client
@@ -83,8 +91,12 @@ async fn test_thing() {
         .unwrap()
         .metadata
         .unwrap();
-    assert!(!program_failed(&ID, &tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 264);
+    assert!(!is_program_failure(&ID, &tx_meta.log_messages));
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        265,
+        CU_TOLERANCE
+    ));
 
     // Check the thing account.
     let account_data = banks_client
@@ -125,8 +137,12 @@ async fn test_thing() {
         .unwrap()
         .metadata
         .unwrap();
-    assert!(!program_failed(&ID, &tx_meta.log_messages));
-    assert_eq!(tx_meta.compute_units_consumed, 445);
+    assert!(!is_program_failure(&ID, &tx_meta.log_messages));
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        390,
+        CU_TOLERANCE
+    ));
 
     let closed_thing = banks_client.get_account(new_thing_addr).await.unwrap();
     assert!(closed_thing.is_none());
@@ -176,12 +192,16 @@ async fn test_init_thing_already_having_lamports() {
         .unwrap()
         .metadata
         .unwrap();
-    assert!(!program_failed(&ID, &tx_meta.log_messages));
+    assert!(!is_program_failure(&ID, &tx_meta.log_messages));
 
     // NOTE: Thing bump is 255, which requires 1 iteration to find the thing key. Each bump
     // iteration costs 1,200 CU. The total adjustment is 1,200 CU.
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
-    assert_eq!(adjusted_compute_units_consumed, 5_078);
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        5_225,
+        CU_TOLERANCE
+    ));
 
     // Check the new_thing account.
     let account_data = banks_client

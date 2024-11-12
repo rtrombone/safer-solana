@@ -1,22 +1,23 @@
-use borsh::io::{Error, ErrorKind, Result, Write};
-use solana_program::program_memory::sol_memcpy;
-
-use crate::account_info::Account;
+use crate::{
+    account_info::Account,
+    borsh::io::{Error, ErrorKind, Result, Write},
+    program_memory::sol_memcpy,
+};
 
 /// Struct that implements [Write] for use with writable [Account].
 ///
 /// Inspired by <https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/bpf_writer.rs>.
-pub struct BorshAccountWriter<'a, 'b> {
-    account: &'b Account<'a, true>,
+pub struct BorshAccountWriter<'a, 'b: 'a> {
+    account: &'a Account<'b, true>,
     position: usize,
 }
 
-impl<'a, 'b> BorshAccountWriter<'a, 'b> {
+impl<'a, 'b: 'a> BorshAccountWriter<'a, 'b> {
     /// Instantiate a new writer using a reference to writable [Account].
     ///
     /// Position defaults to zero.
     #[inline(always)]
-    pub fn new(account: &'b Account<'a, true>) -> Self {
+    pub fn new(account: &'a Account<'b, true>) -> Self {
         Self {
             account,
             position: 0,
@@ -24,7 +25,7 @@ impl<'a, 'b> BorshAccountWriter<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Write for BorshAccountWriter<'a, 'b> {
+impl<'a, 'b: 'a> Write for BorshAccountWriter<'a, 'b> {
     #[inline(always)]
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         let Self {

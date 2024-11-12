@@ -2,6 +2,7 @@
 mod borsh;
 mod bpf_loader_upgradeable;
 mod pack;
+mod system;
 #[cfg(feature = "token")]
 mod token;
 
@@ -9,23 +10,31 @@ mod token;
 pub use borsh::*;
 pub use bpf_loader_upgradeable::*;
 pub use pack::*;
+pub use system::*;
 #[cfg(feature = "token")]
 pub use token::*;
 
 use core::ops::Deref;
 
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{entrypoint::ProgramResult, program_error::ProgramError};
+use crate::{
+    account::AccountSerde,
+    cpi::CpiAuthority,
+    entrypoint::{NoStdAccountInfo, ProgramResult},
+    error::SealevelToolsError,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
 
-use crate::{account::AccountSerde, cpi::CpiAuthority, error::SealevelToolsError};
-
-use super::{try_close_account, try_next_enumerated_account_info, NextEnumeratedAccountOptions};
+use super::{try_close_account, try_next_enumerated_account_info, EnumeratedAccountConstraints};
 
 /// Generic wrapper for a data account that can be read from or written to (specified by `WRITE`
 /// const parameter).
 pub struct Account<'a, const WRITE: bool>(pub(crate) &'a NoStdAccountInfo);
 
+/// Wrapper for a read-only account.
 pub type ReadonlyAccount<'a> = Account<'a, false>;
+
+/// Wrapper for a writable account.
 pub type WritableAccount<'a> = Account<'a, true>;
 
 impl<'a> Account<'a, true> {
@@ -64,11 +73,14 @@ impl<'a, const WRITE: bool> Deref for Account<'a, WRITE> {
     }
 }
 
-impl<'a, const WRITE: bool> Account<'a, WRITE> {
-    pub fn as_cpi_authority<'b>(
-        &'a self,
-        signer_seeds: Option<&'b [&'a [u8]]>,
-    ) -> CpiAuthority<'a, 'b> {
+impl<'b, const WRITE: bool> Account<'b, WRITE> {
+    pub fn as_cpi_authority<'a>(
+        &'b self,
+        signer_seeds: Option<&'a [&'b [u8]]>,
+    ) -> CpiAuthority<'a, 'b>
+    where
+        'b: 'a,
+    {
         CpiAuthority {
             account: self.deref(),
             signer_seeds,
@@ -76,7 +88,7 @@ impl<'a, const WRITE: bool> Account<'a, WRITE> {
     }
 }
 
-/// Generic wrapper for a program account.
+/// Generic wrapper for a program (executable) account.
 pub struct Program<'a>(pub(crate) &'a NoStdAccountInfo);
 
 impl<'a> TryFrom<&'a NoStdAccountInfo> for Program<'a> {
@@ -106,7 +118,10 @@ impl<'a> Deref for Program<'a> {
 /// const parameter).
 pub struct Signer<'a, const WRITE: bool>(pub(crate) &'a NoStdAccountInfo);
 
+/// Wrapper for a read-only signer account.
 pub type Authority<'a> = Signer<'a, false>;
+
+/// Wrapper for a writable signer account.
 pub type Payer<'a> = Signer<'a, true>;
 
 impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for Signer<'a, WRITE> {
@@ -137,8 +152,11 @@ impl<'a, const WRITE: bool> Deref for Signer<'a, WRITE> {
     }
 }
 
-impl<'a, const WRITE: bool> Signer<'a, WRITE> {
-    pub fn as_cpi_authority<'b>(&'a self) -> CpiAuthority<'a, 'b> {
+impl<'b, const WRITE: bool> Signer<'b, WRITE> {
+    pub fn as_cpi_authority<'a>(&'b self) -> CpiAuthority<'a, 'b>
+    where
+        'b: 'a,
+    {
         CpiAuthority {
             account: self.deref(),
             signer_seeds: None,
@@ -148,7 +166,7 @@ impl<'a, const WRITE: bool> Signer<'a, WRITE> {
 
 /// Wrapper for [Account] that deserializes data with [AccountSerde].
 pub struct DataAccount<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> {
-    pub account: Account<'a, WRITE>,
+    pub(crate) account: Account<'a, WRITE>,
     pub data: T,
 }
 
@@ -206,11 +224,14 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> De
 /// ### Example
 ///
 /// ```
-/// use sealevel_tools::account_info::{
-///     try_next_enumerated_account, NextEnumeratedAccountOptions, Payer, Program, ReadonlyAccount,
+/// use sealevel_tools::{
+///     account_info::{
+///         try_next_enumerated_account, EnumeratedAccountConstraints, Payer, Program,
+///         ReadonlyAccount,
+///     },
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
@@ -232,7 +253,7 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> De
 ///     // Next account must be System program.
 ///     let (index, system_program) = try_next_enumerated_account::<Program>(
 ///         &mut accounts_iter,
-///         NextEnumeratedAccountOptions {
+///         EnumeratedAccountConstraints {
 ///             key: Some(&solana_program::system_program::ID),
 ///             ..Default::default()
 ///         })?;
@@ -243,16 +264,84 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> De
 #[inline(always)]
 pub fn try_next_enumerated_account<'a, T: TryFrom<&'a NoStdAccountInfo>>(
     iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
-    opts: NextEnumeratedAccountOptions,
+    constraints: EnumeratedAccountConstraints,
 ) -> Result<(usize, T), ProgramError>
 where
     ProgramError: From<<T as TryFrom<&'a NoStdAccountInfo>>::Error>,
 {
-    let (index, account) = try_next_enumerated_account_info(iter, opts)?;
-
+    let (index, account) = try_next_enumerated_account_info(iter, constraints)?;
     let processed = T::try_from(account)?;
-
     Ok((index, processed))
+}
+
+/// Like [try_next_enumerated_account], but will return [None] if the account's pubkey equals the
+/// `none_pubkey` argument. This method can be useful for instructions where an account is not
+/// required (indicated by an account pubkey already passed into the instruction, usually the
+/// program ID). For optional accounts, it is better to use this method instead of checking for the
+/// pubkey after processing the next account options.
+///
+/// ### Example
+///
+/// ```
+/// use sealevel_tools::{
+///     account_info::{
+///         try_next_enumerated_account, try_next_enumerated_optional_account,
+///         EnumeratedAccountConstraints, Payer, Program, ReadonlyAccount,
+///     },
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
+/// };
+///
+/// fn process_instruction(
+///      program_id: &Pubkey,
+///      accounts: &[NoStdAccountInfo],
+///      instruction_data: &[u8],
+/// ) -> ProgramResult {
+///     let mut accounts_iter = accounts.iter().enumerate();
+///
+///     // Next account must writable signer (A.K.A. our payer).
+///     let (index, payer) =
+///         try_next_enumerated_account::<Payer>(&mut accounts_iter, Default::default())?;
+///
+///     // Next account may be read-only data account.
+///     let (index, readonly_account) = try_next_enumerated_optional_account::<ReadonlyAccount>(
+///         &mut accounts_iter,
+///         &program_id,
+///         Default::default()
+///     )?;
+///
+///     if let Some(account) = readonly_account {
+///         // Do something useful with this read-only account here.
+///     }
+///
+///     // Next account must be System program.
+///     let (index, system_program) = try_next_enumerated_account::<Program>(
+///         &mut accounts_iter,
+///         EnumeratedAccountConstraints {
+///             key: Some(&solana_program::system_program::ID),
+///             ..Default::default()
+///         })?;
+///
+///     Ok(())
+/// }
+/// ```
+#[inline(always)]
+pub fn try_next_enumerated_optional_account<'a, T: TryFrom<&'a NoStdAccountInfo>>(
+    iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
+    none_pubkey: &Pubkey,
+    constraints: EnumeratedAccountConstraints,
+) -> Result<(usize, Option<T>), ProgramError>
+where
+    ProgramError: From<<T as TryFrom<&'a NoStdAccountInfo>>::Error>,
+{
+    let (index, account) = super::_try_take_account_info(iter)?;
+
+    if account.key() == none_pubkey {
+        Ok((index, None))
+    } else {
+        super::_process_enumerated_account_info(index, account, constraints)?;
+        Ok((index, T::try_from(account).map(Into::into)?))
+    }
 }
 
 /// Trait for composable account structs. This trait is meant to leverage the
@@ -262,11 +351,13 @@ where
 /// ### Example
 ///
 /// ```
-/// use sealevel_tools::account_info::{
-///     Payer, ReadonlyAccount, TakeAccounts, WritableAccount, try_next_enumerated_account,
+/// use sealevel_tools::{
+///     account_info::{
+///         Payer, ReadonlyAccount, TakeAccounts, WritableAccount, try_next_enumerated_account,
+///     },
+///     entrypoint::NoStdAccountInfo,
+///     program_error::ProgramError,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::program_error::ProgramError;
 ///
 /// struct ComposableAccounts<'a> {
 ///     thing_one: ReadonlyAccount<'a>,

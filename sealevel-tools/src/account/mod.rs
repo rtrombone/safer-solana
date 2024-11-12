@@ -2,21 +2,24 @@
 
 #[cfg(feature = "borsh")]
 mod borsh;
+#[cfg(feature = "token")]
+mod token_extension;
+
+#[cfg(feature = "borsh")]
+pub use borsh::*;
+#[cfg(feature = "token")]
+pub use token_extension::*;
 
 use core::ops::{Deref, DerefMut};
 
 #[cfg(feature = "alloc")]
 use core::borrow::Borrow;
 
-#[cfg(feature = "borsh")]
-pub use borsh::*;
-
-use solana_program::{
+use crate::{
+    discriminator::Discriminate,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
 };
-
-use crate::discriminator::Discriminate;
 
 /// Trait used to define a serializable account schema, which includes a discriminator. If the
 /// account does not have a discriminator, use DISC_LEN == 0.
@@ -25,8 +28,11 @@ use crate::discriminator::Discriminate;
 ///
 /// Implementing from scratch:
 /// ```
-/// use sealevel_tools::{account::AccountSerde, discriminator::{Discriminate, Discriminator}};
-/// use solana_program::program_error::ProgramError;
+/// use sealevel_tools::{
+///     account::AccountSerde,
+///     discriminator::{Discriminate, Discriminator},
+///     program_error::ProgramError,
+/// };
 ///
 /// #[derive(Debug, PartialEq, Eq)]
 /// pub struct Thing {
@@ -83,6 +89,7 @@ pub trait AccountSerde<const DISC_LEN: usize>: Sized + Discriminate<DISC_LEN> {
     /// Compute serialized length including its discriminator.
     fn try_account_schema_space(&self) -> Result<usize, ProgramError>;
 
+    #[inline(always)]
     fn try_deserialize_data(data: &mut &[u8]) -> Result<Self, ProgramError> {
         let _: [u8; DISC_LEN] = match data[..DISC_LEN].try_into() {
             Ok(discriminator) if discriminator == Self::DISCRIMINATOR => discriminator,
@@ -95,6 +102,7 @@ pub trait AccountSerde<const DISC_LEN: usize>: Sized + Discriminate<DISC_LEN> {
         Self::try_deserialize_schema(&mut &data[DISC_LEN..])
     }
 
+    #[inline(always)]
     fn try_serialize_data(&self, mut buf: &mut [u8]) -> Result<(), ProgramError> {
         buf[..DISC_LEN].copy_from_slice(&Self::DISCRIMINATOR);
 
@@ -102,6 +110,7 @@ pub trait AccountSerde<const DISC_LEN: usize>: Sized + Discriminate<DISC_LEN> {
         self.try_serialize_schema(buf)
     }
 
+    #[inline(always)]
     fn try_account_space(&self) -> Result<usize, ProgramError> {
         self.try_account_schema_space()
             .map(|len| len.saturating_add(DISC_LEN))
@@ -112,7 +121,7 @@ pub trait AccountSerde<const DISC_LEN: usize>: Sized + Discriminate<DISC_LEN> {
 impl<const DISC_LEN: usize, T, U> AccountSerde<DISC_LEN> for alloc::boxed::Box<T>
 where
     U: Into<alloc::boxed::Box<T>> + Borrow<T>,
-    T: AccountSerde<DISC_LEN> + alloc::borrow::ToOwned<Owned = U> + ?Sized,
+    T: AccountSerde<DISC_LEN> + alloc::borrow::ToOwned<Owned = U>,
     T::Owned: AccountSerde<DISC_LEN>,
 {
     #[inline(always)]
@@ -154,7 +163,6 @@ impl<T: Pack + IsInitialized> DerefMut for PackAccountSchema<T> {
 }
 
 impl<T: Pack + IsInitialized> AccountSerde<0> for PackAccountSchema<T> {
-    /// Deserialize the data from the given mutable slice of bytes.
     #[inline(always)]
     fn try_deserialize_schema(data: &mut &[u8]) -> Result<Self, ProgramError> {
         T::unpack(data).map(Self)
@@ -167,7 +175,6 @@ impl<T: Pack + IsInitialized> AccountSerde<0> for PackAccountSchema<T> {
         Ok(())
     }
 
-    /// Compute serialized length including its discriminator.
     #[inline(always)]
     fn try_account_schema_space(&self) -> Result<usize, ProgramError> {
         Ok(T::LEN)

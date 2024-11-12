@@ -1,7 +1,9 @@
 use alloc::vec::Vec;
 
-use solana_nostd_entrypoint::{AccountInfoC, AccountMetaC, NoStdAccountInfo};
-use solana_program::{entrypoint::ProgramResult, instruction::Instruction};
+use crate::{
+    entrypoint::{AccountInfoC, AccountMetaC, NoStdAccountInfo, ProgramResult},
+    instruction::Instruction,
+};
 
 use super::{try_check_borrow_account_info, CpiInstruction};
 
@@ -11,10 +13,10 @@ use super::{try_check_borrow_account_info, CpiInstruction};
 ///
 /// ### Notes
 ///
-/// If you can generate an [InstructionC] struct or have the components to create [CpiInstruction], it
-/// is recommended to use [invoke_signed_c] or [CpiInstruction::invoke_signed] instead.
+/// If you can generate an [InstructionC] struct or have the components to create [CpiInstruction],
+/// it is recommended to use [invoke_signed_c] or [CpiInstruction::invoke_signed] instead.
 ///
-/// [InstructionC]: solana_nostd_entrypoint::InstructionC
+/// [InstructionC]: crate::entrypoint::InstructionC
 /// [invoke_signed_c]: super::invoke_signed_c
 #[inline(always)]
 pub fn invoke_signed(

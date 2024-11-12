@@ -15,7 +15,6 @@ crate-type = ["cdylib", "lib"]
 [dependencies]
 borsh.workspace = true
 sealevel-tools.workspace = true
-solana-nostd-entrypoint.workspace = true
 solana-program.workspace = true
 
 [dev-dependencies]

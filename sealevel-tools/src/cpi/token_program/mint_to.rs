@@ -1,7 +1,8 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::pubkey::Pubkey;
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    pubkey::Pubkey,
+};
 
 /// Arguments for the mint to instruction on the specified Token program, which mints a specified
 /// amount to a token account. Only the mint's authority can invoke this instruction.
@@ -11,22 +12,22 @@ use crate::cpi::{CpiAuthority, CpiInstruction};
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, NextEnumeratedAccountOptions, ReadonlyAccount,
-///         TokenProgramWritableAccount, WritableAccount,
+///         try_next_enumerated_account, EnumeratedAccountConstraints, ReadonlyAccount,
+///         WritableTokenProgramAccount, WritableAccount,
 ///     },
 ///     cpi::token_program as token_program_cpi,
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
-/// solana_program::declare_id!("Examp1eTokenManagement1111111111111111111111");
+/// sealevel_tools::declare_id!("Examp1eTokenManagement1111111111111111111111");
 ///
 /// pub fn mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
 ///    let mut accounts_iter = accounts.iter().enumerate();
 ///
 ///     // First account is the mint. Disregard checking the mint PDA (but in a real program, you
 ///     // probably should check). We don't care to deserialize the mint account.
-///     let (_, mint_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+///     let (_, mint_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
 ///         &mut accounts_iter,
 ///         Default::default(),
 ///     )?;
@@ -50,7 +51,7 @@ use crate::cpi::{CpiAuthority, CpiInstruction};
 ///
 ///     let (_, mint_authority) = try_next_enumerated_account::<ReadonlyAccount>(
 ///         &mut accounts_iter,
-///         NextEnumeratedAccountOptions {
+///         EnumeratedAccountConstraints {
 ///             key: Some(&mint_authority_addr),
 ///             ..Default::default()
 ///         },
@@ -69,15 +70,15 @@ use crate::cpi::{CpiAuthority, CpiInstruction};
 ///     Ok(())
 /// }
 /// ```
-pub struct MintTo<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub mint: &'a NoStdAccountInfo,
-    pub destination: &'a NoStdAccountInfo,
+pub struct MintTo<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
+    pub mint: &'b NoStdAccountInfo,
+    pub destination: &'b NoStdAccountInfo,
     pub mint_authority: CpiAuthority<'a, 'b>,
     pub amount: u64,
 }
 
-impl<'a, 'b> MintTo<'a, 'b> {
+impl<'a, 'b: 'a> MintTo<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

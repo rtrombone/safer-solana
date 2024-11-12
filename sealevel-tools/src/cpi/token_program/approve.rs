@@ -1,20 +1,21 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::pubkey::Pubkey;
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    pubkey::Pubkey,
+};
 
 /// Arguments for the approve instruction on the specified Token program, which allows a delegated
 /// authority to move a specified amount from a token account. Only the token account's owner can
 /// approve an amount to a delegated authority.
-pub struct Approve<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub source: &'a NoStdAccountInfo,
-    pub delegate: &'a NoStdAccountInfo,
+pub struct Approve<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
+    pub source: &'b NoStdAccountInfo,
+    pub delegate: &'b NoStdAccountInfo,
     pub authority: CpiAuthority<'a, 'b>,
     pub amount: u64,
 }
 
-impl<'a, 'b> Approve<'a, 'b> {
+impl<'a, 'b: 'a> Approve<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

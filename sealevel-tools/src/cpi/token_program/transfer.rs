@@ -1,10 +1,11 @@
 #[cfg(feature = "alloc")]
 use alloc::vec;
 
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::{NoStdAccountInfo, ProgramResult},
+    pubkey::Pubkey,
+};
 
 /// If "alloc" feature is disabled, only this maximum number of additional accounts can be passed
 /// into [Transfer] (panics) and [TransferChecked] (returns [Err]).
@@ -32,22 +33,22 @@ pub const MAX_ADDITIONAL_ACCOUNTS_NOALLOC: usize = 12;
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, Authority, NextEnumeratedAccountOptions,
-///         TokenProgramWritableAccount, WritableAccount,
+///         try_next_enumerated_account, Authority, EnumeratedAccountConstraints,
+///         WritableTokenProgramAccount, WritableAccount,
 ///     },
 ///     cpi::token_program as token_program_cpi,
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
-/// solana_program::declare_id!("Examp1eTokenManagement1111111111111111111111");
+/// sealevel_tools::declare_id!("Examp1eTokenManagement1111111111111111111111");
 ///
 /// pub fn transfer(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
 ///     let mut accounts_iter = accounts.iter().enumerate();
 ///
 ///     // First account is the source token account. We don't care to deserialize the token
 ///     // account.
-///     let (_, source_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+///     let (_, source_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
 ///         &mut accounts_iter,
 ///         Default::default(),
 ///     )?;
@@ -84,15 +85,15 @@ pub const MAX_ADDITIONAL_ACCOUNTS_NOALLOC: usize = 12;
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, Authority, NextEnumeratedAccountOptions, ReadonlyAccount,
-///         TokenProgramWritableAccount, WritableAccount,
+///         try_next_enumerated_account, Authority, EnumeratedAccountConstraints, ReadonlyAccount,
+///         WritableTokenProgramAccount, WritableAccount,
 ///     },
 ///     cpi::token_program as token_program_cpi,
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
-/// solana_program::declare_id!("Examp1eTokenManagement1111111111111111111111");
+/// sealevel_tools::declare_id!("Examp1eTokenManagement1111111111111111111111");
 ///
 /// pub fn transfer_checked(
 ///     accounts: &[NoStdAccountInfo],
@@ -103,7 +104,7 @@ pub const MAX_ADDITIONAL_ACCOUNTS_NOALLOC: usize = 12;
 ///
 ///     // First account is the source token account. We don't care to deserialize the token
 ///     // account.
-///     let (_, source_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+///     let (_, source_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
 ///         &mut accounts_iter,
 ///         Default::default(),
 ///     )?;
@@ -145,10 +146,10 @@ pub const MAX_ADDITIONAL_ACCOUNTS_NOALLOC: usize = 12;
 ///     Ok(())
 /// }
 /// ```
-pub struct Transfer<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub source: &'a NoStdAccountInfo,
-    pub destination: &'a NoStdAccountInfo,
+pub struct Transfer<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
+    pub source: &'b NoStdAccountInfo,
+    pub destination: &'b NoStdAccountInfo,
 
     /// Either the owner or delegated authority of the source token account.
     pub authority: CpiAuthority<'a, 'b>,
@@ -156,7 +157,7 @@ pub struct Transfer<'a, 'b> {
 
     /// If [Some], the transfer checked instruction will be used instead of the deprecated transfer
     /// instruction. See [UseTransferChecked] for more information about its usage.
-    pub checked: Option<UseTransferChecked<'a>>,
+    pub checked: Option<UseTransferChecked<'b>>,
 }
 
 /// Optional arguments for [Transfer], which enables the transfer checked instruction instead of the
@@ -180,7 +181,7 @@ pub struct UseTransferChecked<'a> {
     pub additional_accounts: Option<&'a [NoStdAccountInfo]>,
 }
 
-impl<'a, 'b> Transfer<'a, 'b> {
+impl<'a, 'b: 'a> Transfer<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {
@@ -214,11 +215,11 @@ impl<'a, 'b> Transfer<'a, 'b> {
 ///
 /// If the "alloc" feature is disabled, this method will error out if the number of additional
 /// accounts exceeds [MAX_ADDITIONAL_ACCOUNTS_NOALLOC]. Otherwise this method should be infallible.
-pub struct TransferChecked<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub source: &'a NoStdAccountInfo,
-    pub mint: &'a NoStdAccountInfo,
-    pub destination: &'a NoStdAccountInfo,
+pub struct TransferChecked<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
+    pub source: &'b NoStdAccountInfo,
+    pub mint: &'b NoStdAccountInfo,
+    pub destination: &'b NoStdAccountInfo,
 
     /// Either the owner or delegated authority of the source token account.
     pub authority: CpiAuthority<'a, 'b>,
@@ -231,7 +232,7 @@ pub struct TransferChecked<'a, 'b> {
     pub additional_accounts: Option<&'a [NoStdAccountInfo]>,
 }
 
-impl<'a, 'b> TransferChecked<'a, 'b> {
+impl<'a, 'b: 'a> TransferChecked<'a, 'b> {
     /// Tries to consume arguments to perform CPI call.
     #[inline(always)]
     pub fn try_into_invoke(self) -> ProgramResult {

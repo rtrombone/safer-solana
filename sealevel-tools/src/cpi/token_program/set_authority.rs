@@ -1,24 +1,25 @@
 use core::mem::size_of;
 
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::pubkey::Pubkey;
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    pubkey::Pubkey,
+};
 
 use super::AuthorityType;
 
 /// Arguments for the set authority instruction on the specified Token program, which sets a new
 /// authority for either mint or token account (depending on the [AuthorityType]). Only the current
 /// authority of the given account can invoke this instruction.
-pub struct SetAuthority<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub account: &'a NoStdAccountInfo,
+pub struct SetAuthority<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
+    pub account: &'b NoStdAccountInfo,
     pub authority: CpiAuthority<'a, 'b>,
     pub authority_type: AuthorityType,
-    pub new_authority: Option<&'b Pubkey>,
+    pub new_authority: Option<&'a Pubkey>,
 }
 
-impl<'a, 'b> SetAuthority<'a, 'b> {
+impl<'a, 'b: 'a> SetAuthority<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

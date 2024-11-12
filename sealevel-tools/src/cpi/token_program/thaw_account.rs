@@ -1,18 +1,19 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::pubkey::Pubkey;
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    pubkey::Pubkey,
+};
 
 /// Arguments for the thaw account instruction on the specified Token program, which unfreezes a
 /// token account. Only the mint's freeze authority can invoke this instruction.
-pub struct ThawAccount<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub account: &'a NoStdAccountInfo,
-    pub mint: &'a NoStdAccountInfo,
+pub struct ThawAccount<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
+    pub account: &'b NoStdAccountInfo,
+    pub mint: &'b NoStdAccountInfo,
     pub freeze_authority: CpiAuthority<'a, 'b>,
 }
 
-impl<'a, 'b> ThawAccount<'a, 'b> {
+impl<'a, 'b: 'a> ThawAccount<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

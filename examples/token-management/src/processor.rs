@@ -1,20 +1,88 @@
 use sealevel_tools::{
     account_info::{
-        try_next_enumerated_account, AnyTokenProgram, Authority, NextEnumeratedAccountOptions,
-        Payer, ReadonlyAccount, TokenProgramWritableAccount, WritableAccount,
+        try_next_enumerated_account, Authority, EnumeratedAccountConstraints, Payer,
+        ReadonlyAccount, SystemProgram, TokenProgram, WritableAccount, WritableTokenProgramAccount,
     },
-    cpi::token_program::{self as token_program_cpi, CreateTokenAccountOptions},
+    cpi::{
+        set_return_data,
+        token_program::{self as token_program_cpi},
+    },
+    entrypoint::{NoStdAccountInfo, ProgramResult},
+    pubkey::Pubkey,
 };
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{entrypoint::ProgramResult, program::set_return_data, pubkey::Pubkey};
 
-use crate::{instruction::ExtensionTypes, state};
+use crate::{
+    instruction::{ExtensionTypes, InitMintWithExtensionsData},
+    state,
+};
 
 #[inline(always)]
-pub fn init_mint(
+pub fn init_ata(accounts: &[NoStdAccountInfo], idempotent: bool) -> ProgramResult {
+    // solana_program::log::sol_log_compute_units();
+
+    let mut accounts_iter = accounts.iter().enumerate();
+
+    // First account will be paying the rent.
+    let (_, payer) = try_next_enumerated_account::<Payer>(&mut accounts_iter, Default::default())?;
+
+    // Second account is the new token account. It may be safer to verify the ATA address for this
+    // account. But the create instruction should fail if the account key is incorrect.
+    let (_, new_ata) =
+        try_next_enumerated_account::<WritableAccount>(&mut accounts_iter, Default::default())?;
+
+    // Third account is the owner of the new ATA.
+    let (_, owner) =
+        try_next_enumerated_account::<ReadonlyAccount>(&mut accounts_iter, Default::default())?;
+
+    // Fourth account is the mint. Disregard checking the mint PDA (but in a real program, you
+    // probably should check). We don't care to deserialize the mint account.
+    let (_, mint_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
+        &mut accounts_iter,
+        Default::default(),
+    )?;
+
+    // Fifth account is the System program to create the new account.
+    let (_, system_program) =
+        try_next_enumerated_account::<SystemProgram>(&mut accounts_iter, Default::default())?;
+
+    // Sixth account is which token program to use to initialize the token account.
+    let (_, token_program) =
+        try_next_enumerated_account::<TokenProgram>(&mut accounts_iter, Default::default())?;
+
+    // solana_program::log::sol_log_compute_units();
+
+    sealevel_tools::cpi::ata_program::Create {
+        associated_token_account_program_id: &sealevel_tools::cpi::ata_program::CANONICAL_ID,
+        payer: payer.as_cpi_authority(),
+        associated_account: &new_ata,
+        account_owner: &owner,
+        mint: &mint_account,
+        system_program: &system_program,
+        token_program: &token_program,
+        idempotent,
+    }
+    .into_invoke();
+
+    // solana_program::log::sol_log_compute_units();
+
+    Ok(())
+}
+
+#[inline(always)]
+pub fn init_mint_with_extensions(
     accounts: &[NoStdAccountInfo],
-    decimals: u8,
-    freeze_authority: Option<Pubkey>,
+    InitMintWithExtensionsData {
+        decimals,
+        freeze_authority,
+        close_authority,
+        group_pointer,
+        group_member_pointer,
+        metadata_pointer,
+        non_transferable,
+        permanent_delegate,
+        transfer_fee,
+        transfer_hook,
+    }: InitMintWithExtensionsData,
 ) -> ProgramResult {
     // solana_program::log::sol_log_compute_units();
 
@@ -27,18 +95,76 @@ pub fn init_mint(
 
     // Second account is which token program to use.
     let (_, token_program) =
-        try_next_enumerated_account::<AnyTokenProgram>(&mut accounts_iter, Default::default())?;
+        try_next_enumerated_account::<TokenProgram>(&mut accounts_iter, Default::default())?;
 
     // Third account is the new mint.
     let (_, new_mint_account) = try_next_enumerated_account::<WritableAccount>(
         &mut accounts_iter,
-        NextEnumeratedAccountOptions {
+        EnumeratedAccountConstraints {
             key: Some(&new_mint_addr),
             ..Default::default()
         },
     )?;
 
     let (mint_authority_addr, _) = state::find_authority_address();
+
+    // solana_program::log::sol_log_compute_units();
+
+    let extensions = token_program_cpi::InitializeMintExtensions {
+        close_authority: if close_authority {
+            Some(&mint_authority_addr)
+        } else {
+            None
+        },
+        group_pointer: if group_pointer {
+            Some(token_program_cpi::InitializeGroupPointerData {
+                authority: Some(&mint_authority_addr),
+                group: &new_mint_addr,
+            })
+        } else {
+            None
+        },
+        group_member_pointer: if group_member_pointer {
+            Some(token_program_cpi::InitializeGroupMemberPointerData {
+                authority: Some(&mint_authority_addr),
+                group_member: &new_mint_addr,
+            })
+        } else {
+            None
+        },
+        metadata_pointer: if metadata_pointer {
+            Some(token_program_cpi::InitializeMetadataPointerData {
+                authority: Some(&mint_authority_addr),
+                metadata: &new_mint_addr,
+            })
+        } else {
+            None
+        },
+        non_transferable,
+        permanent_delegate: if permanent_delegate {
+            Some(&mint_authority_addr)
+        } else {
+            None
+        },
+        transfer_fee_config: if transfer_fee {
+            Some(token_program_cpi::InitializeTransferFeeConfigData {
+                config_authority: Some(&mint_authority_addr),
+                withdraw_withheld_authority: Some(&mint_authority_addr),
+                basis_points: 2,
+                maximum_fee: 1_000,
+            })
+        } else {
+            None
+        },
+        transfer_hook: if transfer_hook {
+            Some(token_program_cpi::InitializeTransferHookData {
+                authority: Some(&mint_authority_addr),
+                program_id: &crate::ID,
+            })
+        } else {
+            None
+        },
+    };
 
     // solana_program::log::sol_log_compute_units();
 
@@ -49,6 +175,7 @@ pub fn init_mint(
         mint_authority: &mint_authority_addr,
         decimals,
         freeze_authority: freeze_authority.as_ref(),
+        extensions,
     }
     .try_into_invoke()?;
 
@@ -61,7 +188,7 @@ pub fn init_mint(
 pub fn init_token_account(
     accounts: &[NoStdAccountInfo],
     owner: Pubkey,
-    immutable: bool,
+    immutable_owner: bool,
 ) -> ProgramResult {
     // solana_program::log::sol_log_compute_units();
 
@@ -73,7 +200,7 @@ pub fn init_token_account(
     // Second account is the mint.
     let (_, mint_account) = try_next_enumerated_account::<ReadonlyAccount>(
         &mut accounts_iter,
-        NextEnumeratedAccountOptions {
+        EnumeratedAccountConstraints {
             key: Some(&state::find_mint_address().0),
             ..Default::default()
         },
@@ -85,7 +212,7 @@ pub fn init_token_account(
     // Third account is the new token account.
     let (_, new_token_account) = try_next_enumerated_account::<WritableAccount>(
         &mut accounts_iter,
-        NextEnumeratedAccountOptions {
+        EnumeratedAccountConstraints {
             key: Some(&new_token_account_addr),
             ..Default::default()
         },
@@ -102,10 +229,7 @@ pub fn init_token_account(
         ])),
         mint: &mint_account,
         token_account_owner: &owner,
-        opts: CreateTokenAccountOptions {
-            mutable_owner: !immutable,
-            ..Default::default()
-        },
+        immutable_owner,
     }
     .try_into_invoke()?;
 
@@ -122,7 +246,7 @@ pub fn mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
 
     // First account is the mint. Disregard checking the mint PDA (but in a real program, you
     // probably should check). We don't care to deserialize the mint account.
-    let (_, mint_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+    let (_, mint_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
         &mut accounts_iter,
         Default::default(),
     )?;
@@ -144,7 +268,7 @@ pub fn mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
 
     let (_, mint_authority) = try_next_enumerated_account::<ReadonlyAccount>(
         &mut accounts_iter,
-        NextEnumeratedAccountOptions {
+        EnumeratedAccountConstraints {
             key: Some(&mint_authority_addr),
             ..Default::default()
         },
@@ -175,7 +299,7 @@ pub fn suboptimal_mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> Program
 
     // First account is the mint. Disregard checking the mint PDA (but in a real program, you
     // probably should check). We don't care to deserialize the mint account.
-    let (_, mint_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+    let (_, mint_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
         &mut accounts_iter,
         Default::default(),
     )?;
@@ -197,7 +321,7 @@ pub fn suboptimal_mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> Program
 
     let (_, mint_authority) = try_next_enumerated_account::<ReadonlyAccount>(
         &mut accounts_iter,
-        NextEnumeratedAccountOptions {
+        EnumeratedAccountConstraints {
             key: Some(&mint_authority_addr),
             ..Default::default()
         },
@@ -234,7 +358,7 @@ pub fn burn(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     let mut accounts_iter = accounts.iter().enumerate();
 
     // First account is the source token account. We don't care to deserialize the token account.
-    let (_, source_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+    let (_, source_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
         &mut accounts_iter,
         Default::default(),
     )?;
@@ -274,7 +398,7 @@ pub fn transfer(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     let mut accounts_iter = accounts.iter().enumerate();
 
     // First account is the source token account. We don't care to deserialize the token account.
-    let (_, source_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+    let (_, source_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
         &mut accounts_iter,
         Default::default(),
     )?;
@@ -315,7 +439,7 @@ pub fn transfer_checked(accounts: &[NoStdAccountInfo], amount: u64, decimals: u8
     let mut accounts_iter = accounts.iter().enumerate();
 
     // First account is the source token account. We don't care to deserialize the token account.
-    let (_, source_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+    let (_, source_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
         &mut accounts_iter,
         Default::default(),
     )?;
@@ -365,7 +489,7 @@ pub fn approve(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     let mut accounts_iter = accounts.iter().enumerate();
 
     // First account is the source token account. We don't care to deserialize the token account.
-    let (_, source_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+    let (_, source_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
         &mut accounts_iter,
         Default::default(),
     )?;
@@ -404,7 +528,7 @@ pub fn revoke(accounts: &[NoStdAccountInfo]) -> ProgramResult {
     let mut accounts_iter = accounts.iter().enumerate();
 
     // First account is the source token account. We don't care to deserialize the token account.
-    let (_, source_account) = try_next_enumerated_account::<TokenProgramWritableAccount>(
+    let (_, source_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
         &mut accounts_iter,
         Default::default(),
     )?;

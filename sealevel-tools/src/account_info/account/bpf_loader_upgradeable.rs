@@ -1,18 +1,18 @@
 use core::ops::Deref;
 
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{
-    bpf_loader_upgradeable::{UpgradeableLoaderState, ID},
-    program_error::ProgramError,
+use solana_program::bpf_loader_upgradeable::{UpgradeableLoaderState, ID};
+
+use crate::{
+    entrypoint::NoStdAccountInfo, error::SealevelToolsError, program_error::ProgramError,
     pubkey::Pubkey,
 };
 
-use crate::error::SealevelToolsError;
-
 use super::{Account, Program};
 
-/// Representing the BPF loader upgradeable program.
-pub struct BpfLoaderUpgradeableProgram<'a>(pub Program<'a>);
+const SIZE_OF_PROGRAMDATA_METADATA: usize = UpgradeableLoaderState::size_of_programdata_metadata();
+
+/// Representing the BPF loader Upgradeable program.
+pub struct BpfLoaderUpgradeableProgram<'a>(pub(crate) Program<'a>);
 
 impl<'a> TryFrom<&'a NoStdAccountInfo> for BpfLoaderUpgradeableProgram<'a> {
     type Error = SealevelToolsError<'static>;
@@ -20,7 +20,7 @@ impl<'a> TryFrom<&'a NoStdAccountInfo> for BpfLoaderUpgradeableProgram<'a> {
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
         if account.key() == &ID {
-            Ok(Self(Program::try_from(account)?))
+            Program::try_from(account).map(Self)
         } else {
             Err(SealevelToolsError::AccountInfo(&[
                 "Expected BPF Loader Upgradeable program",
@@ -37,20 +37,25 @@ impl<'a> Deref for BpfLoaderUpgradeableProgram<'a> {
     }
 }
 
-/// Representing a program's program data (owned by the BPF Loader Upgradeable program).
+/// Account representing a program's program data (owned by the BPF Loader Upgradeable program).
 pub struct UpgradeableProgramData<'a, const WRITE: bool> {
-    pub account: Account<'a, WRITE>,
+    pub(crate) account: Account<'a, WRITE>,
     pub data: (
         u64,            // slot
         Option<Pubkey>, // upgrade_authority_address
     ),
 }
 
-pub type UpgradeableReadOnlyProgramData<'a> = UpgradeableProgramData<'a, false>;
-pub type UpgradeableWritableProgramData<'a> = UpgradeableProgramData<'a, true>;
+/// Read-only account representing a program's program data (owned by the BPF Loader Upgradeable
+/// program).
+pub type ReadonlyUpgradeableProgramData<'a> = UpgradeableProgramData<'a, false>;
+
+/// Writable account representing a program's program data (owned by the BPF Loader Upgradeable
+/// program).
+pub type WritableUpgradeableProgramData<'a> = UpgradeableProgramData<'a, true>;
 
 impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for UpgradeableProgramData<'a, WRITE> {
-    type Error = ProgramError;
+    type Error = SealevelToolsError<'static>;
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
@@ -58,26 +63,15 @@ impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for UpgradeableProgram
 
         if account.owner() == &ID {
             let data = {
-                let data = account.try_borrow_data()?;
-                match bincode::deserialize(&data).map_err(|_| ProgramError::InvalidAccountData)? {
-                    UpgradeableLoaderState::ProgramData {
-                        slot,
-                        upgrade_authority_address,
-                    } => (slot, upgrade_authority_address),
-                    _ => {
-                        return Err(
-                            SealevelToolsError::AccountInfo(&["Expected program data"]).into()
-                        )
-                    }
-                }
+                let account_data = account.try_borrow_data()?;
+                try_deserialize_program_data(&account_data)?
             };
 
             Ok(Self { account, data })
         } else {
             Err(SealevelToolsError::AccountInfo(&[
                 "Expected BPF Loader Upgradeable program account",
-            ])
-            .into())
+            ]))
         }
     }
 }
@@ -91,5 +85,63 @@ impl<'a, const WRITE: bool> UpgradeableProgramData<'a, WRITE> {
     /// The upgrade authority address. If [None], the program is immutable.
     pub fn upgrade_authority_address(&self) -> Option<Pubkey> {
         self.data.1
+    }
+}
+
+impl<'a, const WRITE: bool> Deref for UpgradeableProgramData<'a, WRITE> {
+    type Target = Account<'a, WRITE>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.account
+    }
+}
+
+fn try_deserialize_program_data(
+    account_data: &[u8],
+) -> Result<(u64, Option<Pubkey>), SealevelToolsError<'static>> {
+    if account_data.len() < SIZE_OF_PROGRAMDATA_METADATA {
+        Err(SealevelToolsError::PassThrough(
+            ProgramError::InvalidAccountData,
+        ))
+    } else if account_data[..4] != [3, 0, 0, 0] {
+        Err(SealevelToolsError::AccountInfo(&["Expected program data"]))
+    } else {
+        let slot = {
+            let mut buf = [0; 8];
+            buf.copy_from_slice(&account_data[4..12]);
+            u64::from_le_bytes(buf)
+        };
+
+        let upgrade_authority_address = if account_data[12] == 1 {
+            let mut buf = [0; 32];
+            buf.copy_from_slice(&account_data[13..45]);
+            Some(buf.into())
+        } else {
+            None
+        };
+
+        Ok((slot, upgrade_authority_address))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_try_deserialize_program_data() {
+        let slot = 42;
+        let upgrade_authority_address = Some(Pubkey::new_unique());
+
+        let account_data = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+            slot,
+            upgrade_authority_address,
+        })
+        .unwrap();
+
+        assert_eq!(
+            try_deserialize_program_data(&account_data).unwrap(),
+            (slot, upgrade_authority_address)
+        );
     }
 }

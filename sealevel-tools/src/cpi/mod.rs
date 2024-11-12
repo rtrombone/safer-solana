@@ -11,19 +11,26 @@ pub mod token_program;
 #[cfg(feature = "alloc")]
 pub use alloc::*;
 
+pub use solana_program::program::{set_return_data, MAX_RETURN_DATA};
+
+#[cfg(feature = "alloc")]
+pub use solana_program::program::get_return_data as checked_dynamic_return_data;
+
 use core::ops::Deref;
 
-use solana_nostd_entrypoint::{AccountInfoC, AccountMetaC, InstructionC, NoStdAccountInfo};
-use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
+use crate::{
+    entrypoint::{AccountInfoC, AccountMetaC, InstructionC, NoStdAccountInfo, ProgramResult},
+    pubkey::Pubkey,
+};
 
 /// Associate signer seeds with an [NoStdAccountInfo]. Signer seeds may be [None] if
 /// [NoStdAccountInfo::is_signer] is true.
-pub struct CpiAuthority<'a, 'b> {
-    pub account: &'a NoStdAccountInfo,
-    pub signer_seeds: Option<&'b [&'a [u8]]>,
+pub struct CpiAuthority<'a, 'b: 'a> {
+    pub account: &'b NoStdAccountInfo,
+    pub signer_seeds: Option<&'a [&'b [u8]]>,
 }
 
-impl<'a, 'b> Deref for CpiAuthority<'a, 'b> {
+impl<'a, 'b: 'a> Deref for CpiAuthority<'a, 'b> {
     type Target = NoStdAccountInfo;
 
     fn deref(&self) -> &Self::Target {
@@ -36,9 +43,9 @@ impl<'a, 'b> Deref for CpiAuthority<'a, 'b> {
 /// returned as well so the remaining array elements can be disregarded when its slice is passed
 /// into an invoke method.
 #[inline(always)]
-pub fn unwrap_signers_seeds<'a, 'b, const NUM_POSSIBLE: usize>(
-    possible_signers_seeds: &[Option<&'b [&'a [u8]]>; NUM_POSSIBLE],
-) -> ([&'b [&'a [u8]]; NUM_POSSIBLE], usize) {
+pub fn unwrap_signers_seeds<'a, 'b: 'a, const NUM_POSSIBLE: usize>(
+    possible_signers_seeds: &[Option<&'a [&'b [u8]]>; NUM_POSSIBLE],
+) -> ([&'a [&'b [u8]]; NUM_POSSIBLE], usize) {
     let mut signers_seeds = [Default::default(); NUM_POSSIBLE];
     let mut end = 0;
 
@@ -117,12 +124,13 @@ impl<'a> CpiInstruction<'a> {
         signers_seeds: &[&[&[u8]]],
     ) -> Option<::alloc::vec::Vec<u8>> {
         self.invoke_signed(infos, signers_seeds);
-        solana_program::program::get_return_data().map(|(_, data)| data)
+        checked_dynamic_return_data().map(|(_, data)| data)
     }
 }
 
 /// Similar to [invoke_signed](solana_program::program::invoke_signed), but performs a lower level
 /// call to the runtime and does not try to perform any account borrows.
+#[allow(unexpected_cfgs)]
 #[inline(always)]
 pub fn invoke_signed_c(
     instruction: &InstructionC,
@@ -163,10 +171,9 @@ pub fn try_check_borrow_account_info(account_info: &NoStdAccountInfo) -> Program
 
 /// Get the return data from an invoked program as a fixed array of bytes (maximum size defined by
 /// [solana_program::program::MAX_RETURN_DATA]). If the return data's size differs from the
-/// specified array size, this method will return [None] See
-/// [solana_program::program::get_return_data] for a dynamic version.
+/// specified array size, this method will return [None].
+#[allow(unexpected_cfgs)]
 pub fn checked_return_data<const DATA_LEN: usize>() -> Option<(Pubkey, [u8; DATA_LEN])> {
-    use solana_program::program::MAX_RETURN_DATA;
     assert!(
         DATA_LEN <= MAX_RETURN_DATA,
         "Return data size exceeds 1,024 bytes"

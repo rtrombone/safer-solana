@@ -2,17 +2,19 @@
 
 mod write;
 
-use core::ops::{Deref, DerefMut};
-
-use solana_program::program_error::ProgramError;
 pub use write::*;
 
-use borsh::{
-    io::{Error, ErrorKind, Read, Result as IoResult, Write},
-    BorshDeserialize, BorshSerialize,
-};
+use core::ops::{Deref, DerefMut};
 
-use crate::{account::AccountSerde, discriminator::Discriminate};
+use crate::{
+    account::AccountSerde,
+    borsh::{
+        io::{Error, ErrorKind, Read, Result as IoResult, Write},
+        BorshDeserialize, BorshSerialize,
+    },
+    discriminator::Discriminate,
+    program_error::ProgramError,
+};
 
 /// This method first reads the expected discriminator from the reader and then deserializes the
 /// data into the given type.

@@ -1,11 +1,11 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use sealevel_tools::{
     account::BorshAccountSchema,
-    account_info::BorshWritableAccount,
+    account_info::WritableBorshAccount,
     discriminator::{Discriminate, Discriminator},
     pda::DeriveAddress,
+    pubkey::Pubkey,
 };
-use solana_program::pubkey::Pubkey;
 
 #[derive(Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize)]
 pub struct Thing {
@@ -21,7 +21,7 @@ impl Discriminate<8> for Thing {
 }
 
 pub type ThingSchema = BorshAccountSchema<8, Thing>;
-pub type ThingWritableAccount<'a> = BorshWritableAccount<'a, 8, Thing>;
+pub type WritableThingAccount<'a> = WritableBorshAccount<'a, 8, Thing>;
 
 impl DeriveAddress for Thing {
     type Seeds<'a> = ();

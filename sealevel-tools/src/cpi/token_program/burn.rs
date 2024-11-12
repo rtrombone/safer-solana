@@ -1,20 +1,21 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::pubkey::Pubkey;
-
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    cpi::{CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    pubkey::Pubkey,
+};
 
 /// Arguments for the burn instruction on the specified Token program, which burns a specified
 /// amount from a token account. Only the token account's owner or delegated authority can invoke
 /// this instruction.
-pub struct Burn<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
-    pub source: &'a NoStdAccountInfo,
-    pub mint: &'a NoStdAccountInfo,
+pub struct Burn<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
+    pub source: &'b NoStdAccountInfo,
+    pub mint: &'b NoStdAccountInfo,
     pub authority: CpiAuthority<'a, 'b>,
     pub amount: u64,
 }
 
-impl<'a, 'b> Burn<'a, 'b> {
+impl<'a, 'b: 'a> Burn<'a, 'b> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {

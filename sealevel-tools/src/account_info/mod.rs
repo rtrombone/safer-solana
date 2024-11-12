@@ -9,47 +9,31 @@ pub use close::*;
 #[cfg(feature = "alloc")]
 use alloc::format;
 
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{program_error::ProgramError, pubkey::Pubkey};
-
-use crate::error::SealevelToolsError;
-
-pub const DEFAULT_NEXT_ENUMERATED_ACCOUNT_OPTIONS: NextEnumeratedAccountOptions<'static, 'static> =
-    NextEnumeratedAccountOptions {
-        key: None,
-        any_of_keys: None,
-        owner: None,
-        any_of_owners: None,
-        seeds: None,
-        is_signer: None,
-        is_writable: None,
-        executable: None,
-        exact_data_len: None,
-        min_data_len: None,
-        max_data_len: None,
-        match_data_slice: None,
-    };
+use crate::{
+    entrypoint::NoStdAccountInfo, error::SealevelToolsError, program_error::ProgramError,
+    pubkey::Pubkey,
+};
 
 /// Optional arguments for [try_next_enumerated_account_info], which specify constraints for the next
 /// [NoStdAccountInfo].
 #[derive(Debug, Default)]
-pub struct NextEnumeratedAccountOptions<'a, 'b> {
+pub struct EnumeratedAccountConstraints<'a, 'b: 'a> {
     /// If provided, the next account's key must equal this pubkey.
     pub key: Option<&'a Pubkey>,
 
     /// If provided, the next account's key must be one of these pubkeys.
-    pub any_of_keys: Option<&'b [&'a Pubkey]>,
+    pub any_of_keys: Option<&'a [&'b Pubkey]>,
 
     /// If provided, the next account's owner must equal this pubkey.
     pub owner: Option<&'a Pubkey>,
 
     /// If provided, the next account's owner must be one of these pubkeys.
-    pub any_of_owners: Option<&'b [&'a Pubkey]>,
+    pub any_of_owners: Option<&'a [&'b Pubkey]>,
 
     /// If provided, the next account's key must be derived from these seeds and owner.
     pub seeds: Option<(
-        &'b [&'a [u8]], // seeds
-        &'b Pubkey,     // owner
+        &'a [&'b [u8]], // seeds
+        &'a Pubkey,     // owner
     )>,
 
     /// If provided, the next account's `is_signer` must equal this value.
@@ -74,6 +58,7 @@ pub struct NextEnumeratedAccountOptions<'a, 'b> {
     pub match_data_slice: Option<MatchDataSlice<'a>>,
 }
 
+/// Slice of data to match against the next account's data.
 #[derive(Debug, Default)]
 pub struct MatchDataSlice<'a> {
     pub offset: usize,
@@ -90,11 +75,13 @@ pub struct MatchDataSlice<'a> {
 /// # Example
 ///
 /// ```
-/// use sealevel_tools::account_info::{
-///     try_next_enumerated_account_info, NextEnumeratedAccountOptions
+/// use sealevel_tools::{
+///     account_info::{
+///         try_next_enumerated_account_info, EnumeratedAccountConstraints,
+///     },
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
@@ -106,7 +93,7 @@ pub struct MatchDataSlice<'a> {
 ///     // Next account must be the clock sysvar.
 ///     let (index, account) = try_next_enumerated_account_info(
 ///         &mut accounts_iter,
-///         NextEnumeratedAccountOptions {
+///         EnumeratedAccountConstraints {
 ///             key: Some(&solana_program::sysvar::clock::ID),
 ///             ..Default::default()
 ///         })?;
@@ -114,7 +101,7 @@ pub struct MatchDataSlice<'a> {
 ///     // Next account must be writable.
 ///     let (index, account) = try_next_enumerated_account_info(
 ///         &mut accounts_iter,
-///         NextEnumeratedAccountOptions {
+///         EnumeratedAccountConstraints {
 ///             is_writable: Some(true),
 ///             ..Default::default()
 ///         })?;
@@ -125,7 +112,103 @@ pub struct MatchDataSlice<'a> {
 #[inline(always)]
 pub fn try_next_enumerated_account_info<'a, I>(
     iter: &mut I,
-    NextEnumeratedAccountOptions {
+    constraints: EnumeratedAccountConstraints,
+) -> Result<I::Item, ProgramError>
+where
+    I: Iterator<Item = (usize, &'a NoStdAccountInfo)>,
+{
+    let (index, account) = _try_take_account_info(iter)?;
+    _process_enumerated_account_info(index, account, constraints)?;
+
+    Ok((index, account))
+}
+
+/// Similar to [try_next_enumerated_account_info], but will return [None] if the account's pubkey
+/// equals the `none_pubkey` argument. This method can be useful for instructions where an account
+/// is not required (indicated by an account pubkey already passed into the instruction, usually the
+/// program ID). For optional accounts, it is better to use this method instead of checking for the
+/// pubkey after processing the next account options.
+///
+/// If any of the constraints are violated, a custom program error code with
+/// [SealevelToolsError::ACCOUNT_INFO] is returned, as well as a program
+/// log indicating the specific constraint that was violated.
+///
+/// # Example
+///
+/// ```
+/// use sealevel_tools::{
+///     account_info::{
+///         try_next_enumerated_account_info, try_next_enumerated_optional_account_info,
+///         EnumeratedAccountConstraints,
+///     },
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
+/// };
+///
+/// fn process_instruction(
+///      program_id: &Pubkey,
+///      accounts: &[NoStdAccountInfo],
+///      instruction_data: &[u8],
+/// ) -> ProgramResult {
+///     let mut accounts_iter = accounts.iter().enumerate();
+///
+///     // Next account might be the clock sysvar.
+///     let (index, account) = try_next_enumerated_optional_account_info(
+///         &mut accounts_iter,
+///         &program_id,
+///         EnumeratedAccountConstraints {
+///             key: Some(&solana_program::sysvar::clock::ID),
+///             ..Default::default()
+///         })?;
+///
+///     if let Some(clock_account) = account {
+///         // Do something Clock related, but you should really just be using Clock::get`. This
+///         // scope is just to demonstrate an example of how to handle an optional account.
+///     }
+///
+///     // Next account must be writable.
+///     let (index, account) = try_next_enumerated_account_info(
+///         &mut accounts_iter,
+///         EnumeratedAccountConstraints {
+///             is_writable: Some(true),
+///             ..Default::default()
+///         })?;
+///
+///     Ok(())
+/// }
+/// ```
+#[inline(always)]
+pub fn try_next_enumerated_optional_account_info<'a, I>(
+    iter: &mut I,
+    none_pubkey: &Pubkey,
+    constraints: EnumeratedAccountConstraints,
+) -> Result<(usize, Option<&'a NoStdAccountInfo>), ProgramError>
+where
+    I: Iterator<Item = (usize, &'a NoStdAccountInfo)>,
+{
+    let (index, account) = _try_take_account_info(iter)?;
+
+    if account.key() == none_pubkey {
+        Ok((index, None))
+    } else {
+        _process_enumerated_account_info(index, account, constraints)?;
+        Ok((index, Some(account)))
+    }
+}
+
+#[inline(always)]
+fn _try_take_account_info<'a, I>(iter: &mut I) -> Result<I::Item, ProgramError>
+where
+    I: Iterator<Item = (usize, &'a NoStdAccountInfo)>,
+{
+    iter.next().ok_or(ProgramError::NotEnoughAccountKeys)
+}
+
+#[inline(always)]
+fn _process_enumerated_account_info(
+    index: usize,
+    account: &NoStdAccountInfo,
+    EnumeratedAccountConstraints {
         key,
         any_of_keys,
         owner,
@@ -138,13 +221,8 @@ pub fn try_next_enumerated_account_info<'a, I>(
         min_data_len,
         max_data_len,
         match_data_slice,
-    }: NextEnumeratedAccountOptions,
-) -> Result<I::Item, ProgramError>
-where
-    I: Iterator<Item = (usize, &'a NoStdAccountInfo)>,
-{
-    let (index, account) = iter.next().ok_or(ProgramError::NotEnoughAccountKeys)?;
-
+    }: EnumeratedAccountConstraints,
+) -> Result<(), ProgramError> {
     if let Some(key) = key {
         if account.key() != key {
             #[cfg(feature = "alloc")]
@@ -415,5 +493,8 @@ where
         }
     }
 
-    Ok((index, account))
+    #[cfg(not(feature = "alloc"))]
+    let _ = index;
+
+    Ok(())
 }

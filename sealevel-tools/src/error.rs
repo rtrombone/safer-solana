@@ -1,6 +1,6 @@
-//! Error types for Sealevel tools.
+//! Error types for this crate.
 
-use solana_program::{log::sol_log, program_error::ProgramError};
+use crate::{log::sol_log, program_error::ProgramError};
 
 #[derive(Debug)]
 pub enum SealevelToolsError<'a> {

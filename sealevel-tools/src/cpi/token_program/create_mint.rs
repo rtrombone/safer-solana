@@ -1,11 +1,16 @@
-use solana_nostd_entrypoint::NoStdAccountInfo;
-use solana_program::{program_error::ProgramError, program_pack::Pack, pubkey::Pubkey};
-use spl_token_2022::state::Mint;
+use core::mem::size_of;
 
 use crate::{
     account_info::{is_any_token_program_id, Account},
     cpi::{system_program::CreateAccount, CpiAuthority, CpiInstruction},
+    entrypoint::NoStdAccountInfo,
+    program_error::ProgramError,
+    program_pack::Pack,
+    pubkey::Pubkey,
+    spl_token_2022::state::Mint,
 };
+
+use super::EMPTY_EXTENSION_LEN;
 
 /// Arguments to create a mint account. This method creates an account for one of the Token programs
 /// and initializes it as a mint.
@@ -15,13 +20,13 @@ use crate::{
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, try_next_enumerated_account_info, AnyTokenProgram,
-///         NextEnumeratedAccountOptions, Account, Signer,
+///         try_next_enumerated_account, try_next_enumerated_account_info, TokenProgram,
+///         EnumeratedAccountConstraints, Account, Signer,
 ///     },
-///     cpi::token_program::CreateMint,
+///     cpi::token_program::{CreateMint, InitializeMetadataPointerData, InitializeMintExtensions},
+///     entrypoint::{NoStdAccountInfo, ProgramResult},
+///     pubkey::Pubkey,
 /// };
-/// use solana_nostd_entrypoint::NoStdAccountInfo;
-/// use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
 ///
 /// fn process_instruction(
 ///      program_id: &Pubkey,
@@ -40,7 +45,7 @@ use crate::{
 ///     // Next account must be writable data account matching PDA address.
 ///     let (_, new_mint_account) = try_next_enumerated_account::<Account<true>>(
 ///         &mut accounts_iter,
-///         NextEnumeratedAccountOptions {
+///         EnumeratedAccountConstraints {
 ///             key: Some(&new_mint_addr),
 ///             ..Default::default()
 ///         },
@@ -52,7 +57,7 @@ use crate::{
 ///
 ///     // Next account is which token program to use.
 ///     let (_, token_program) =
-///         try_next_enumerated_account::<AnyTokenProgram>(&mut accounts_iter, Default::default())?;
+///         try_next_enumerated_account::<TokenProgram>(&mut accounts_iter, Default::default())?;
 ///
 ///     CreateMint {
 ///         token_program_id: token_program.key(),
@@ -61,25 +66,145 @@ use crate::{
 ///         mint_authority: mint_authority.key(),
 ///         decimals: 9,
 ///         freeze_authority: None,
+///         extensions: InitializeMintExtensions {
+///             metadata_pointer: Some(InitializeMetadataPointerData {
+///                 authority: Some(mint_authority.key()),
+///                 metadata: new_mint_account.key(),
+///             }),
+///             non_transferable: true,
+///             ..Default::default()
+///         }
 ///     }
 ///     .try_into_invoke()?;
 ///
 ///     Ok(())
 /// }
 /// ```
-pub struct CreateMint<'a, 'b> {
-    pub token_program_id: &'b Pubkey,
+pub struct CreateMint<'a, 'b: 'a> {
+    pub token_program_id: &'a Pubkey,
     pub payer: CpiAuthority<'a, 'b>,
     pub mint: CpiAuthority<'a, 'b>,
-    pub mint_authority: &'b Pubkey,
+    pub mint_authority: &'a Pubkey,
     pub decimals: u8,
     pub freeze_authority: Option<&'a Pubkey>,
+    pub extensions: InitializeMintExtensions<'a>,
 }
 
-impl<'a, 'b> CreateMint<'a, 'b> {
+/// Optional extensions for mint accounts. These extensions are used to add additional features to
+/// mint accounts.
+#[derive(Default)]
+pub struct InitializeMintExtensions<'a> {
+    pub close_authority: Option<&'a Pubkey>,
+    pub group_pointer: Option<InitializeGroupPointerData<'a>>,
+    pub group_member_pointer: Option<InitializeGroupMemberPointerData<'a>>,
+    pub metadata_pointer: Option<InitializeMetadataPointerData<'a>>,
+    pub non_transferable: bool,
+    pub permanent_delegate: Option<&'a Pubkey>,
+    pub transfer_fee_config: Option<InitializeTransferFeeConfigData<'a>>,
+    pub transfer_hook: Option<InitializeTransferHookData<'a>>,
+}
+
+/// Data required to initialize the group pointer extension, which is used to establish a collection
+/// of mints.
+pub struct InitializeGroupPointerData<'a> {
+    /// Who has authority to update the group. If [None], the group cannot be modified.
+    pub authority: Option<&'a Pubkey>,
+
+    /// Where the group is stored.
+    ///
+    /// ### Notes
+    ///
+    /// The initialize group pointer instruction actually takes an optional group account, where if
+    /// both the authority and group pubkeys are [None], then the Token program will revert because
+    /// at least one of these values must be present. So if you want to initialize the group
+    /// pointer, this data must be specified.
+    pub group: &'a Pubkey,
+}
+
+/// Data required to initialize the group member pointer extension, which is used to associate a
+/// mint with a group (via group pointer extension).
+pub struct InitializeGroupMemberPointerData<'a> {
+    /// Who has authority to update the group member. If [None], the group member cannot be
+    /// modified.
+    pub authority: Option<&'a Pubkey>,
+
+    /// Where the group member is stored.
+    ///
+    /// ### Notes
+    ///
+    /// The initialize group member pointer instruction actually takes an optional member account,
+    /// where if both the authority and member pubkeys are [None], then the Token program will
+    /// revert because at least one of these values must be present. So if you want to initialize
+    /// the group member pointer, this data must be specified.
+    pub group_member: &'a Pubkey,
+}
+
+/// Data required to initialize the metadata pointer extension, which is used to add descriptive
+/// information to a mint.
+pub struct InitializeMetadataPointerData<'a> {
+    /// Who has authority to update metadata. If [None], the metadata cannot be modified.
+    pub authority: Option<&'a Pubkey>,
+
+    /// Where the metadata is stored.
+    ///
+    /// ### Notes
+    ///
+    /// The initialize metadata pointer instruction actually takes an optional metadata account,
+    /// where if both the authority and metadata pubkeys are [None], then the Token program will
+    /// revert because at least one of these values must be present. So if you want to initialize
+    /// the metadata pointer, this data must be specified.
+    pub metadata: &'a Pubkey,
+}
+
+/// Data required to initialize the transfer fee extension, which is used to charge a fee for
+/// transferring tokens.
+pub struct InitializeTransferFeeConfigData<'a> {
+    /// Who has authority to update the config. If [None], the config cannot be modified.
+    pub config_authority: Option<&'a Pubkey>,
+
+    /// Who has authority to withhold fees. If [None], no one can withdraw fees.
+    pub withdraw_withheld_authority: Option<&'a Pubkey>,
+
+    /// The basis points for the fee. Cannot exceed
+    /// [spl_token_2022::extension::transfer_fee::MAX_FEE_BASIS_POINTS].
+    pub basis_points: u16,
+
+    /// The maximum fee.
+    pub maximum_fee: u64,
+}
+
+/// Data required to initialize the transfer hook extension, which is used to execute custom logic
+/// when transferring tokens.
+pub struct InitializeTransferHookData<'a> {
+    /// Who has authority to update the program ID. If [None], the program ID cannot be modified.
+    pub authority: Option<&'a Pubkey>,
+
+    /// Program for transfer hook CPI.
+    ///
+    /// ### Notes
+    ///
+    /// The initialize transfer hook  instruction actually takes an optional program ID, where if
+    /// both the authority and program ID pubkeys are [None], then the Token program will revert
+    /// because at least one of these values must be present. So if you want to initialize the
+    /// transfer hook extension, this data must be specified.
+    pub program_id: &'a Pubkey,
+}
+
+const ONLY_AUTHORITY_LEN: usize = EMPTY_EXTENSION_LEN // type + length
+    + size_of::<Pubkey>(); // authority
+
+const AUTHORITY_POINTER_LEN: usize = ONLY_AUTHORITY_LEN // type + length + authority
+    + size_of::<Pubkey>(); // pointer
+
+impl<'a, 'b: 'a> CreateMint<'a, 'b> {
     /// Try to consume arguments to perform CPI calls.
+    ///
+    /// ### Notes
+    ///
+    /// Extension CPI calls are optional and will only be invoked when [Some] is provided for any
+    /// of the optional extension arguments. See [InitializeMintExtensions] for more information.
     #[inline(always)]
-    pub fn try_into_invoke(self) -> Result<Account<'a, true>, ProgramError> {
+    pub fn try_into_invoke(self) -> Result<Account<'b, true>, ProgramError> {
         let Self {
             token_program_id,
             payer,
@@ -87,21 +212,201 @@ impl<'a, 'b> CreateMint<'a, 'b> {
             mint_authority,
             decimals,
             freeze_authority,
+            extensions:
+                InitializeMintExtensions {
+                    close_authority,
+                    group_pointer,
+                    group_member_pointer,
+                    metadata_pointer,
+                    non_transferable,
+                    permanent_delegate,
+                    transfer_fee_config,
+                    transfer_hook,
+                },
         } = self;
 
-        if !is_any_token_program_id(token_program_id) {
-            return Err(ProgramError::InvalidAccountData);
-        }
+        let add_close_authority = close_authority.is_some();
+        let add_group_pointer = group_pointer.is_some();
+        let add_group_member_pointer = group_member_pointer.is_some();
+        let add_metadata_pointer = metadata_pointer.is_some();
+        let add_permanent_delegate = permanent_delegate.is_some();
+        let add_transfer_fee_config = transfer_fee_config.is_some();
+        let add_transfer_hook = transfer_hook.is_some();
 
-        // First create the mint account by assigning it to the token program.
-        let mint_account = CreateAccount {
-            payer,
-            to: mint,
-            program_id: token_program_id,
-            space: Some(Mint::LEN),
-            lamports: None,
-        }
-        .try_into_invoke()?;
+        let mint_account = if add_close_authority
+            || add_group_pointer
+            || add_group_member_pointer
+            || add_metadata_pointer
+            || non_transferable
+            || add_permanent_delegate
+            || add_transfer_fee_config
+            || add_transfer_hook
+        {
+            if token_program_id != &spl_token_2022::ID {
+                return Err(super::ERROR_EXTENSIONS_UNSUPPORTED.into());
+            }
+
+            // Add to this depending on which extensions to add to the mint.
+            let mut total_space = super::BASE_WITH_EXTENSIONS_LEN;
+
+            if add_close_authority {
+                total_space += ONLY_AUTHORITY_LEN;
+            }
+            if add_group_pointer {
+                total_space += AUTHORITY_POINTER_LEN;
+            }
+            if add_group_member_pointer {
+                total_space += AUTHORITY_POINTER_LEN;
+            }
+            if add_metadata_pointer {
+                total_space += AUTHORITY_POINTER_LEN;
+            }
+            if non_transferable {
+                total_space += EMPTY_EXTENSION_LEN;
+            }
+            if add_permanent_delegate {
+                total_space += ONLY_AUTHORITY_LEN;
+            }
+            if add_transfer_fee_config {
+                total_space += {
+                    EMPTY_EXTENSION_LEN // type + length
+                    + size_of::<Pubkey>() // authority
+                    + size_of::<Pubkey>() // withdraw_withheld_authority
+                    + size_of::<u64>() // withheld_amount
+                    + size_of::<u64>() // older_transfer_fee_epoch
+                    + size_of::<u64>() // older_transfer_fee_maximum_fee
+                    + size_of::<u16>() // older_basis_points
+                    + size_of::<u64>() // newer_transfer_fee_epoch
+                    + size_of::<u64>() // newer_transfer_fee_maximum_fee
+                    + size_of::<u16>() // newer_basis_points
+                };
+            }
+            if add_transfer_hook {
+                total_space += AUTHORITY_POINTER_LEN;
+            }
+
+            // First create the mint account by assigning it to the token program.
+            let mint_account = CreateAccount {
+                payer,
+                to: mint,
+                program_id: token_program_id,
+                space: Some(total_space),
+                lamports: None,
+            }
+            .try_into_invoke()?;
+
+            if let Some(close_authority) = close_authority {
+                super::extensions::InitializeMintCloseAuthority {
+                    token_program_id,
+                    mint: &mint_account,
+                    authority: Some(close_authority),
+                }
+                .into_invoke();
+            }
+
+            if let Some(InitializeGroupPointerData { authority, group }) = group_pointer {
+                super::extensions::InitializeGroupPointer {
+                    token_program_id,
+                    mint: &mint_account,
+                    authority,
+                    group: Some(group),
+                }
+                .into_invoke();
+            }
+
+            if let Some(InitializeGroupMemberPointerData {
+                authority,
+                group_member,
+            }) = group_member_pointer
+            {
+                super::extensions::InitializeGroupMemberPointer {
+                    token_program_id,
+                    mint: &mint_account,
+                    authority,
+                    group_member: Some(group_member),
+                }
+                .into_invoke();
+            }
+
+            if let Some(InitializeMetadataPointerData {
+                authority,
+                metadata,
+            }) = metadata_pointer
+            {
+                super::extensions::InitializeMetadataPointer {
+                    token_program_id,
+                    mint: &mint_account,
+                    authority,
+                    metadata: Some(metadata),
+                }
+                .into_invoke();
+            }
+
+            if non_transferable {
+                super::extensions::InitializeNonTransferable {
+                    token_program_id,
+                    mint: &mint_account,
+                }
+                .into_invoke();
+            }
+
+            if let Some(delegate) = permanent_delegate {
+                super::extensions::InitializePermanentDelegate {
+                    token_program_id,
+                    mint: &mint_account,
+                    delegate,
+                }
+                .into_invoke();
+            }
+
+            if let Some(InitializeTransferFeeConfigData {
+                config_authority,
+                withdraw_withheld_authority,
+                basis_points,
+                maximum_fee,
+            }) = transfer_fee_config
+            {
+                super::extensions::InitializeTransferFeeConfig {
+                    token_program_id,
+                    mint: &mint_account,
+                    config_authority,
+                    withdraw_withheld_authority,
+                    basis_points,
+                    maximum_fee,
+                }
+                .into_invoke();
+            }
+
+            if let Some(InitializeTransferHookData {
+                authority,
+                program_id,
+            }) = transfer_hook
+            {
+                super::extensions::InitializeTransferHook {
+                    token_program_id,
+                    mint: &mint_account,
+                    authority,
+                    program_id: Some(program_id),
+                }
+                .into_invoke();
+            }
+
+            mint_account
+        } else {
+            if !is_any_token_program_id(token_program_id) {
+                return Err(super::ERROR_EXPECTED_TOKEN_PROGRAM.into());
+            }
+
+            // First create the mint account by assigning it to the token program.
+            CreateAccount {
+                payer,
+                to: mint,
+                program_id: token_program_id,
+                space: Some(Mint::LEN),
+                lamports: None,
+            }
+            .try_into_invoke()?
+        };
 
         _invoke_initialize_mint2(
             token_program_id,
@@ -123,7 +428,7 @@ impl<'a, 'b> CreateMint<'a, 'b> {
 ///
 /// It is preferred to use [CreateMint] instead of initializing a mint by itself because the other
 /// method will create the account and initialize it as a mint in one action.
-pub struct InitializeMint2<'a> {
+pub struct InitializeMint<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,
     pub mint_authority: &'a Pubkey,
@@ -131,7 +436,7 @@ pub struct InitializeMint2<'a> {
     pub decimals: u8,
 }
 
-impl<'a> InitializeMint2<'a> {
+impl<'a> InitializeMint<'a> {
     /// Consume arguments to perform CPI call.
     #[inline(always)]
     pub fn into_invoke(self) {
@@ -162,9 +467,9 @@ fn _invoke_initialize_mint2(
     decimals: u8,
 ) {
     const IX_DATA_LEN: usize = 1 // selector
-        + 1 // decimals
-        + 32 // mint_authority
-        + 1 + 32; // freeze_authority
+    + 1 // decimals
+    + 32 // mint_authority
+    + 1 + 32; // freeze_authority
 
     let mut instruction_data = [0; IX_DATA_LEN];
 

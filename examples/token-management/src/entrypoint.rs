@@ -1,6 +1,9 @@
-use borsh::BorshDeserialize;
-use solana_nostd_entrypoint::{basic_panic_impl, entrypoint_nostd, NoStdAccountInfo};
-use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
+use sealevel_tools::{
+    borsh::BorshDeserialize,
+    entrypoint::{basic_panic_impl, entrypoint_nostd, NoStdAccountInfo, ProgramResult},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
 
 use crate::{instruction::ProgramInstruction, processor};
 
@@ -17,24 +20,23 @@ fn process_instruction(
     match BorshDeserialize::try_from_slice(instruction_data)
         .map_err(|_| ProgramError::InvalidInstructionData)?
     {
-        ProgramInstruction::Approve { amount } => processor::approve(accounts, amount),
-        ProgramInstruction::Burn { amount } => processor::burn(accounts, amount),
+        ProgramInstruction::Approve(amount) => processor::approve(accounts, amount),
+        ProgramInstruction::Burn(amount) => processor::burn(accounts, amount),
         ProgramInstruction::GetAccountDataSize(extensions) => {
             processor::get_account_data_size(accounts, extensions)
         }
-        ProgramInstruction::InitMint {
-            decimals,
-            freeze_authority,
-        } => processor::init_mint(accounts, decimals, freeze_authority),
-        ProgramInstruction::InitTokenAccount { owner, immutable } => {
-            processor::init_token_account(accounts, owner, immutable)
-        }
-        ProgramInstruction::MintTo { amount } => processor::mint_to(accounts, amount),
+        ProgramInstruction::InitAta(idempotent) => processor::init_ata(accounts, idempotent),
+        ProgramInstruction::InitMint(data) => processor::init_mint_with_extensions(accounts, data),
+        ProgramInstruction::InitTokenAccount {
+            owner,
+            immutable_owner,
+        } => processor::init_token_account(accounts, owner, immutable_owner),
+        ProgramInstruction::MintTo(amount) => processor::mint_to(accounts, amount),
         ProgramInstruction::Revoke => processor::revoke(accounts),
-        ProgramInstruction::SuboptimalMintTo { amount } => {
+        ProgramInstruction::SuboptimalMintTo(amount) => {
             processor::suboptimal_mint_to(accounts, amount)
         }
-        ProgramInstruction::Transfer { amount } => processor::transfer(accounts, amount),
+        ProgramInstruction::Transfer(amount) => processor::transfer(accounts, amount),
         ProgramInstruction::TransferChecked { amount, decimals } => {
             processor::transfer_checked(accounts, amount, decimals)
         }
