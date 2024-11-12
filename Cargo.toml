@@ -21,7 +21,7 @@ borsh = { version = "1.5.1", default-features = false }
 const-crypto = "0.3"
 sealevel-tools = { path = "sealevel-tools" }
 solana-banks-interface = "^1.18"
-solana-nostd-entrypoint = "0.5.1"
+solana-nostd-entrypoint = "0.6.0"
 solana-program = "^1.18"
 solana-program-test = "^1.18"
 solana-sdk = "^1.18"

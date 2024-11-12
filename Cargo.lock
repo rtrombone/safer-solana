@@ -3981,9 +3981,9 @@ checksum = "8b8a731ed60e89177c8a7ab05fe0f1511cedd3e70e773f288f9de33a9cfdc21e"
 
 [[package]]
 name = "solana-nostd-entrypoint"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25398f2f285c60280e99434db5bcddc9ac1eefe1e43c8794282095deae48eadd"
+checksum = "1d858c267867557010f123f89aa388641755d291a525140b70d824512918efe9"
 dependencies = [
  "solana-program 1.18.26",
 ]
