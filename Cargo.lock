@@ -1292,7 +1292,7 @@ checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
 
 [[package]]
 name = "example-account-management"
-version = "0.5.0"
+version = "0.5.1-beta.1"
 dependencies = [
  "borsh 1.5.3",
  "examples-common",
@@ -1304,7 +1304,7 @@ dependencies = [
 
 [[package]]
 name = "example-token-management"
-version = "0.5.0"
+version = "0.5.1-beta.1"
 dependencies = [
  "borsh 1.5.3",
  "examples-common",
@@ -1318,7 +1318,7 @@ dependencies = [
 
 [[package]]
 name = "examples-common"
-version = "0.5.0"
+version = "0.5.1-beta.1"
 dependencies = [
  "solana-banks-interface",
  "solana-program",
@@ -3361,7 +3361,7 @@ dependencies = [
 
 [[package]]
 name = "sealevel-tools"
-version = "0.5.0"
+version = "0.5.1-beta.1"
 dependencies = [
  "bincode",
  "borsh 1.5.3",
@@ -5708,9 +5708,9 @@ checksum = "8df9b6e13f2d32c91b9bd719c00d1958837bc7dec474d94952798cc8e69eeec3"
 
 [[package]]
 name = "tracing"
-version = "0.1.40"
+version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3523ab5a71916ccf420eebdf5521fcef02141234bbc0b8a49f2fdc4544364ef"
+checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
 dependencies = [
  "log",
  "pin-project-lite",

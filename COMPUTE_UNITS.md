@@ -23,7 +23,7 @@ are using the Anchor framework, you may not care too much about CU optimization.
   - See [relevant CU config]. Example costs:
     - Creating a program address with a known bump costs 1,500 CU.
     - Deriving a program address costs 1,500 CU per bump iteration (e.g. bump ==
-      243 means 4,500 CU because it requires 3 iterations including checking
+      253 means 4,500 CU because it requires 3 iterations including checking
       bump == 255).
     - Performing a CPI call starts at 1,000 CU.
     - Logging remaining CU is 100 CU (so if you perform

@@ -124,11 +124,11 @@ program size can easily be double the size of a program with the same logic but
 without a specific framework.
 
 [alloc]:  https://doc.rust-lang.org/alloc/
-[anchor-lang]: https://docs.rs/anchor-lang/
-[borsh]: https://docs.rs/borsh/
+[anchor-lang]: https://crates.io/crates/anchor-lang/
+[borsh]: https://crates.io/crates/borsh/
 [documentation]: https://docs.rs/sealevel-tools/
 [entrypoint]: https://docs.rs/sealevel-tools/latest/sealevel_tools/entrypoint/index.html
 [noalloc_allocator]: https://docs.rs/sealevel-nostd-entrypoint/0.1.0/sealevel_nostd_entrypoint/macro.noalloc_allocator.html
-[sealevel-nostd-entrypoint]: https://docs.rs/sealevel-nostd-entrypoint/
-[spl-discriminator]: https://docs.rs/spl-discriminator/
-[shank]: https://docs.rs/shank/
+[sealevel-nostd-entrypoint]: https://crates.io/crates/sealevel-nostd-entrypoint/
+[spl-discriminator]: https://crates.io/crates/spl-discriminator/
+[shank]: https://crates.io/crates/shank/
