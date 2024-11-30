@@ -24,8 +24,9 @@ minimum-supported versions of the following minor versions of Solana crates:
 Keep in mind that with future Solana 2.0 minor versions, MSRV may uptick.
 
 Currently, this package leverages [sealevel-nostd-entrypoint], which is a fork
-of an optimized no-std program entrypoint library updated to use Solana 2.0. Its
-contents are re-exported for convenience into the [entrypoint] submodule.
+of [solana-nostd-entrypoint] (an optimized no-std program entrypoint library)
+updated to use Solana 2.0. Its contents are re-exported for convenience into the
+[entrypoint] submodule.
 
 ## Feature Flags
 
@@ -130,5 +131,6 @@ without a specific framework.
 [entrypoint]: https://docs.rs/sealevel-tools/latest/sealevel_tools/entrypoint/index.html
 [noalloc_allocator]: https://docs.rs/sealevel-nostd-entrypoint/0.1.0/sealevel_nostd_entrypoint/macro.noalloc_allocator.html
 [sealevel-nostd-entrypoint]: https://crates.io/crates/sealevel-nostd-entrypoint/
+[solana-nostd-entrypoint]: https://crates.io/crates/solana-nostd-entrypoint/
 [spl-discriminator]: https://crates.io/crates/spl-discriminator/
 [shank]: https://crates.io/crates/shank/

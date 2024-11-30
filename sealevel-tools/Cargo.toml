@@ -1,8 +1,8 @@
 [package]
 name = "sealevel-tools"
-description = "Tools for Solana program development"
+description = "Tools for safe, CU-optimized Solana program development"
 keywords = [
-    "nostd-entrypoint",
+    "no-std",
     "solana",
     "solana-program",
     "spl"
