@@ -1,3 +1,11 @@
+pub mod token_extensions {
+    pub use spl_token_2022::ID;
+}
+
+pub mod legacy_token {
+    crate::declare_id!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+}
+
 use core::ops::{Deref, DerefMut};
 
 use crate::{

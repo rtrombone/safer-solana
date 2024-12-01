@@ -1,7 +1,7 @@
 use core::ops::Deref;
 
 use crate::{
-    account::StateWithExtensionsBaseSchema,
+    account::{legacy_token, token_extensions, StateWithExtensionsBaseSchema},
     entrypoint::NoStdAccountInfo,
     error::SealevelToolsError,
     program_pack::{IsInitialized, Pack},
@@ -14,7 +14,7 @@ use crate::{
 
 use super::{Account, DataAccount, PackAccount, Program};
 
-pub const TOKEN_PROGRAM_IDS: [&Pubkey; 2] = [&spl_token::ID, &spl_token_2022::ID];
+pub const TOKEN_PROGRAM_IDS: [&Pubkey; 2] = [&legacy_token::ID, &token_extensions::ID];
 
 /// Determine whether the given program ID is either SPL Token or SPL Token Extensions program ID.
 #[inline(always)]
@@ -221,7 +221,7 @@ impl<'a> TryFrom<&'a NoStdAccountInfo> for LegacyTokenProgram<'a> {
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
-        if account.key() == &spl_token::ID {
+        if account.key() == &legacy_token::ID {
             Ok(Self(Program::try_from(account)?))
         } else {
             Err(SealevelToolsError::AccountInfo(&[
@@ -253,7 +253,7 @@ impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo> for LegacyTokenProgram
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
-        if account.owner() == &spl_token::ID {
+        if account.owner() == &legacy_token::ID {
             Account::try_from(account).map(Self)
         } else {
             Err(SealevelToolsError::AccountInfo(&[
@@ -303,7 +303,7 @@ impl<'a, const WRITE: bool, T: Pack + IsInitialized> TryFrom<Account<'a, WRITE>>
 
     #[inline(always)]
     fn try_from(account: Account<'a, WRITE>) -> Result<Self, Self::Error> {
-        if account.owner() == &spl_token::ID {
+        if account.owner() == &legacy_token::ID {
             DataAccount::try_from(account).map(Self)
         } else {
             Err(SealevelToolsError::AccountInfo(&[
@@ -342,7 +342,7 @@ impl<'a> TryFrom<&'a NoStdAccountInfo> for TokenExtensionsProgram<'a> {
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
-        if account.key() == &spl_token_2022::ID {
+        if account.key() == &token_extensions::ID {
             Program::try_from(account).map(Self)
         } else {
             Err(SealevelToolsError::AccountInfo(&[
@@ -376,7 +376,7 @@ impl<'a, const WRITE: bool> TryFrom<&'a NoStdAccountInfo>
 
     #[inline(always)]
     fn try_from(account: &'a NoStdAccountInfo) -> Result<Self, Self::Error> {
-        if account.owner() == &spl_token_2022::ID {
+        if account.owner() == &token_extensions::ID {
             Account::try_from(account).map(Self)
         } else {
             Err(SealevelToolsError::AccountInfo(&[
@@ -498,7 +498,7 @@ impl<'a, const WRITE: bool, T: BaseState + Pack> TryFrom<Account<'a, WRITE>>
 
     #[inline(always)]
     fn try_from(account: Account<'a, WRITE>) -> Result<Self, Self::Error> {
-        if account.owner() == &spl_token_2022::ID {
+        if account.owner() == &token_extensions::ID {
             DataAccount::try_from(account).map(Self)
         } else {
             Err(SealevelToolsError::AccountInfo(&[

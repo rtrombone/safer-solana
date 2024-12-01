@@ -3,12 +3,12 @@
 #[cfg(feature = "borsh")]
 mod borsh;
 #[cfg(feature = "token")]
-mod token_extension;
+mod token;
 
 #[cfg(feature = "borsh")]
 pub use borsh::*;
 #[cfg(feature = "token")]
-pub use token_extension::*;
+pub use token::*;
 
 use core::ops::{Deref, DerefMut};
 
