@@ -1,11 +1,16 @@
 [package]
 name = "sealevel-tools"
+categories = [
+    "cryptography::cryptocurrencies",
+    "no-std",
+    "no-std::no-alloc"
+]
 description = "Tools for safe, CU-optimized Solana program development"
 keywords = [
-    "no-std",
     "solana",
     "solana-program",
-    "spl"
+    "spl",
+    "spl-token-2022"
 ]
 edition.workspace = true
 license.workspace = true
