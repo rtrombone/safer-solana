@@ -21,7 +21,7 @@ async fn test_thing() {
     // Init.
     let value = 69;
 
-    let (mut banks_client, payer, recent_blockhash) =
+    let (banks_client, payer, recent_blockhash) =
         ProgramTest::new("example_account_management", ID, None)
             .start()
             .await;
@@ -160,7 +160,7 @@ async fn test_thing() {
 async fn test_init_thing_already_having_lamports() {
     let value = 420;
 
-    let (mut banks_client, payer, recent_blockhash) = ProgramTest::new(
+    let (banks_client, payer, recent_blockhash) = ProgramTest::new(
         "example_account_management",
         example_account_management::ID,
         None,

@@ -3,6 +3,7 @@ use example_token_management::{
     state, ID,
 };
 use examples_common::{is_compute_units_within, is_program_failure, TestResult, TestSuccess};
+use sealevel_tools::account::legacy_token;
 use solana_program_test::{tokio, BanksClient, ProgramTest};
 use solana_sdk::{
     hash::Hash,
@@ -28,7 +29,7 @@ async fn test_init_mint_token_program() {
     let decimals = 9;
 
     let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
-        spl_token::ID,
+        legacy_token::ID,
         decimals,
         None, // freeze_authority
         None, // extensions
@@ -55,7 +56,7 @@ async fn test_init_token_account_token_program() {
     let immutable_owner = false;
 
     let TestSuccess { tx_meta, .. } = InitTokenAccountTest::set_up(
-        spl_token::ID,
+        legacy_token::ID,
         owner,
         immutable_owner,
         None, // mint_extensions
@@ -80,7 +81,7 @@ async fn test_init_token_account_token_program() {
 async fn test_get_account_data_size_token_program() {
     let extensions = [ExtensionType::ImmutableOwner];
 
-    let TestSuccess { tx_meta, .. } = GetAccountDataSizeTest::set_up(spl_token::ID, &extensions)
+    let TestSuccess { tx_meta, .. } = GetAccountDataSizeTest::set_up(legacy_token::ID, &extensions)
         .await
         .run()
         .await
@@ -108,7 +109,7 @@ async fn test_mint_to_token_program() {
     let optimized = true;
 
     let TestSuccess { tx_meta, .. } =
-        MintToTest::set_up(spl_token::ID, destination_owner, amount, optimized)
+        MintToTest::set_up(legacy_token::ID, destination_owner, amount, optimized)
             .await
             .run()
             .await
@@ -131,7 +132,7 @@ async fn test_suboptimal_mint_to_token_program() {
     let optimized = false;
 
     let TestSuccess { tx_meta, .. } =
-        MintToTest::set_up(spl_token::ID, destination_owner, amount, optimized)
+        MintToTest::set_up(legacy_token::ID, destination_owner, amount, optimized)
             .await
             .run()
             .await
@@ -152,7 +153,7 @@ async fn test_burn_token_program() {
     let source_owner = Keypair::new();
     let amount = 420_420;
 
-    let TestSuccess { tx_meta, .. } = BurnTest::set_up(spl_token::ID, &source_owner, amount)
+    let TestSuccess { tx_meta, .. } = BurnTest::set_up(legacy_token::ID, &source_owner, amount)
         .await
         .run()
         .await
@@ -173,7 +174,7 @@ async fn test_transfer_token_program() {
     let amount = 420_420;
 
     let TestSuccess { tx_meta, .. } =
-        TransferTest::set_up(spl_token::ID, &source_owner, destination_owner, amount)
+        TransferTest::set_up(legacy_token::ID, &source_owner, destination_owner, amount)
             .await
             .run()
             .await
@@ -194,7 +195,7 @@ async fn test_transfer_checked_token_program() {
     let amount = 420_420;
 
     let TestSuccess { tx_meta, .. } =
-        TransferCheckedTest::set_up(spl_token::ID, &source_owner, destination_owner, amount)
+        TransferCheckedTest::set_up(legacy_token::ID, &source_owner, destination_owner, amount)
             .await
             .run()
             .await
@@ -215,7 +216,7 @@ async fn test_approve_token_program() {
     let amount = 420_420;
 
     let TestSuccess { tx_meta, .. } =
-        ApproveTest::set_up(spl_token::ID, &source_owner, delegate, amount)
+        ApproveTest::set_up(legacy_token::ID, &source_owner, delegate, amount)
             .await
             .run()
             .await
@@ -233,7 +234,7 @@ async fn test_approve_token_program() {
 async fn test_revoke_token_program() {
     let source_owner = Keypair::new();
 
-    let TestSuccess { tx_meta, .. } = RevokeTest::set_up(spl_token::ID, &source_owner)
+    let TestSuccess { tx_meta, .. } = RevokeTest::set_up(legacy_token::ID, &source_owner)
         .await
         .run()
         .await
@@ -917,7 +918,7 @@ async fn test_init_mint_token_program_and_freeze_authority() {
     let freeze_authority = Pubkey::new_unique();
 
     let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
-        spl_token::ID,
+        legacy_token::ID,
         decimals,
         freeze_authority.into(),
         None, // extensions
@@ -1012,7 +1013,7 @@ impl InitMintTest {
 
     async fn run(self) -> TestResult {
         let Self {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
@@ -1248,7 +1249,7 @@ impl InitTokenAccountTest {
 
     async fn run(self) -> TestResult {
         let Self {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
@@ -1420,7 +1421,7 @@ impl MintToTest {
 
     async fn run(self) -> TestResult {
         let Self {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
@@ -1567,7 +1568,7 @@ impl<'a> BurnTest<'a> {
 
     async fn run(self) -> TestResult {
         let Self {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
@@ -1731,7 +1732,7 @@ impl<'a> TransferTest<'a> {
 
     async fn run(self) -> TestResult {
         let Self {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
@@ -1849,7 +1850,7 @@ impl<'a> TransferCheckedTest<'a> {
 
     async fn run(self) -> TestResult {
         let TransferTest {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
@@ -2010,7 +2011,7 @@ impl<'a> ApproveTest<'a> {
 
     async fn run(self) -> TestResult {
         let Self {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
@@ -2128,7 +2129,7 @@ impl<'a> RevokeTest<'a> {
 
     async fn run(self) -> TestResult {
         let Self {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
@@ -2245,7 +2246,7 @@ impl<'a> GetAccountDataSizeTest<'a> {
 
     async fn run(self) -> TestResult {
         let Self {
-            mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             token_program_id,
