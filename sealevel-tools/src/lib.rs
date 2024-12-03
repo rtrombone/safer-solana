@@ -452,7 +452,7 @@
 //! [try_next_enumerated_account]: crate::account_info::try_next_enumerated_account
 //! [working examples]: https://github.com/rtrombone/safer-solana/tree/v0.5.0/examples/
 
-#![deny(dead_code, unused_imports, unused_mut)]
+#![deny(dead_code, unused_imports, unused_mut, unused_variables)]
 #![no_std]
 
 pub mod account;

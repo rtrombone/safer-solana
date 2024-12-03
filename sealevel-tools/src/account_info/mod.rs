@@ -56,6 +56,12 @@ pub struct EnumeratedAccountConstraints<'a, 'b: 'a> {
 
     /// If provided, the next account's data must match this slice at the given offset.
     pub match_data_slice: Option<MatchDataSlice<'a>>,
+
+    /// If provided, the next account's lamports must be at least this value.
+    pub min_lamports: Option<u64>,
+
+    /// If provided, the next account's lamports must be at most this value.
+    pub max_lamports: Option<u64>,
 }
 
 /// Slice of data to match against the next account's data.
@@ -221,6 +227,8 @@ fn _process_enumerated_account_info(
         min_data_len,
         max_data_len,
         match_data_slice,
+        min_lamports,
+        max_lamports,
     }: EnumeratedAccountConstraints,
 ) -> Result<(), ProgramError> {
     if let Some(key) = key {
@@ -488,6 +496,44 @@ fn _process_enumerated_account_info(
             #[cfg(not(feature = "alloc"))]
             return Err(SealevelToolsError::AccountInfo(&[
                 "Account data slice does not match expected data",
+            ])
+            .into());
+        }
+    }
+
+    if let Some(min_lamports) = min_lamports {
+        let lamports = *account.try_borrow_lamports()?;
+
+        if lamports < min_lamports {
+            #[cfg(feature = "alloc")]
+            return Err(SealevelToolsError::AccountInfo(&[
+                format!("Account index {}: Lamports mismatch...", index).as_str(),
+                format!("  Found: {}", lamports).as_str(),
+                format!("  Expected at least: {}", min_lamports).as_str(),
+            ])
+            .into());
+            #[cfg(not(feature = "alloc"))]
+            return Err(SealevelToolsError::AccountInfo(&[
+                "Account does not match minimum lamports",
+            ])
+            .into());
+        }
+    }
+
+    if let Some(max_lamports) = max_lamports {
+        let lamports = *account.try_borrow_lamports()?;
+
+        if lamports > max_lamports {
+            #[cfg(feature = "alloc")]
+            return Err(SealevelToolsError::AccountInfo(&[
+                format!("Account index {}: Lamports mismatch...", index).as_str(),
+                format!("  Found: {}", lamports).as_str(),
+                format!("  Expected at most: {}", max_lamports).as_str(),
+            ])
+            .into());
+            #[cfg(not(feature = "alloc"))]
+            return Err(SealevelToolsError::AccountInfo(&[
+                "Account does not match maximum lamports",
             ])
             .into());
         }
