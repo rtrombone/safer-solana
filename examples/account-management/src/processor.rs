@@ -2,7 +2,7 @@ use sealevel_tools::{
     account::BorshAccountSchema,
     account_info::{
         try_next_enumerated_account, EnumeratedAccountConstraints, MatchDataSlice, Payer,
-        WritableAccount,
+        WritableAccount, WritableSystemAccount,
     },
     cpi::system_program::CreateAccount,
     discriminator::Discriminate,
@@ -27,7 +27,7 @@ pub fn init_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
     let (new_thing_addr, new_thing_bump) = Thing::find_program_address(());
 
     // Second account is the new Thing.
-    let (_, new_thing_account) = try_next_enumerated_account::<WritableAccount>(
+    let (_, new_thing_account) = try_next_enumerated_account::<WritableSystemAccount>(
         &mut accounts_iter,
         EnumeratedAccountConstraints {
             key: Some(&new_thing_addr),
