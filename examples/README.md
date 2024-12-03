@@ -4,7 +4,7 @@
 - [token-management]
 
 ## Build Requirements for Reproducibility
-- Solana CLI v2.1.2
+- Solana CLI v2.1.4
   - The easiest way to change your CLI is using [agave-install]. See `agave-install -h` for more
     information on initializing a specific version.
 
