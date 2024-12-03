@@ -12,7 +12,7 @@ edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/rtrombone/safer-solana"
 rust-version = "1.75"
-version = "0.5.2"
+version = "0.5.3"
 
 [workspace.dependencies]
 bs58 = { version = "0.5", default-features = false, features = ["alloc"] }
