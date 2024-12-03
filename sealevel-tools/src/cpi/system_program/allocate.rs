@@ -29,8 +29,10 @@ pub(super) fn _invoke_allocate(account: &CpiAuthority, space: u64) {
     .invoke_possibly_signed(&[account.to_info_c()], &[account.signer_seeds]);
 }
 
-const IX_DATA_LEN: usize = 4 // selector
-    + core::mem::size_of::<u64>(); // space
+const IX_DATA_LEN: usize = {
+    4 // selector
+    + core::mem::size_of::<u64>() // space
+};
 
 #[inline(always)]
 fn _serialize_instruction_data(space: u64) -> [u8; IX_DATA_LEN] {

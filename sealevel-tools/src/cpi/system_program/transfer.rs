@@ -46,8 +46,10 @@ pub(super) fn _invoke_transfer(from: &CpiAuthority, to: &CpiAuthority, lamports:
     );
 }
 
-const IX_DATA_LEN: usize = 4 // selector
-    + core::mem::size_of::<u64>(); // lamports
+const IX_DATA_LEN: usize = {
+    4 // selector
+    + core::mem::size_of::<u64>() // lamports
+};
 
 #[inline(always)]
 fn _serialize_instruction_data(lamports: u64) -> [u8; IX_DATA_LEN] {

@@ -9,6 +9,9 @@
 //! [invoke_signed]: crate::cpi::invoke_signed
 
 mod initialize_close_authority;
+// mod initialize_confidential_mint_burn;
+mod initialize_confidential_transfer;
+mod initialize_confidential_transfer_fee_config;
 mod initialize_group_member_pointer;
 mod initialize_group_pointer;
 mod initialize_immutable_owner;
@@ -19,6 +22,9 @@ mod initialize_transfer_fee_config;
 mod initialize_transfer_hook;
 
 pub use initialize_close_authority::*;
+// pub use initialize_confidential_mint_burn::*;
+pub use initialize_confidential_transfer::*;
+pub use initialize_confidential_transfer_fee_config::*;
 pub use initialize_group_member_pointer::*;
 pub use initialize_group_pointer::*;
 pub use initialize_immutable_owner::*;
@@ -38,10 +44,12 @@ fn unwrap_or_default_pubkey(key: Option<&Pubkey>) -> &Pubkey {
     key.unwrap_or(&NONE_PUBKEY)
 }
 
-const IX_INITIALIZE_POINTER_DATA_LEN: usize = size_of::<u8>() // token instruction selector
+const IX_INITIALIZE_POINTER_DATA_LEN: usize = {
+    size_of::<u8>() // token instruction selector
     + size_of::<u8>() // pointer instruction selector
     + size_of::<Pubkey>() // authority
-    + size_of::<Pubkey>(); // pointer
+    + size_of::<Pubkey>() // pointer
+};
 
 fn serialize_initialize_pointer_instruction_data(
     selector: u8,

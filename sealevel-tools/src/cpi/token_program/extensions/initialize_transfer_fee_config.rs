@@ -27,14 +27,16 @@ impl<'a> InitializeTransferFeeConfig<'a> {
             maximum_fee,
         } = self;
 
-        const IX_DATA_LEN: usize = size_of::<u8>() // token instruction selector
+        const IX_DATA_LEN: usize = {
+            size_of::<u8>() // token instruction selector
             + size_of::<u8>() // extension selector
             + size_of::<u8>() // config_authority.is_some()
             + size_of::<Pubkey>() // config_authority
             + size_of::<u8>() // withdraw_withheld_authority.is_some()
             + size_of::<Pubkey>() // withdraw_withheld_authority
             + size_of::<u16>() // basis_points
-            + size_of::<u64>(); // maximum_fee
+            + size_of::<u64>() // maximum_fee
+        };
 
         let mut instruction_data = [0; IX_DATA_LEN];
 

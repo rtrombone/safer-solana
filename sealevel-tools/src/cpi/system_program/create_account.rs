@@ -242,10 +242,12 @@ fn _invoke_create_account(
     );
 }
 
-const IX_DATA_LEN: usize = 4 // selector
+const IX_DATA_LEN: usize = {
+    4 // selector
     + size_of::<u64>() // lamports
     + size_of::<u64>() // space
-    + size_of::<Pubkey>(); // owner
+    + size_of::<Pubkey>() // owner
+};
 
 #[inline(always)]
 fn _serialize_instruction_data(lamports: u64, space: u64, owner: &Pubkey) -> [u8; IX_DATA_LEN] {

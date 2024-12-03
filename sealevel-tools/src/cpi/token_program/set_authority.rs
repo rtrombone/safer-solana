@@ -31,9 +31,11 @@ impl<'a, 'b: 'a> SetAuthority<'a, 'b> {
             new_authority,
         } = self;
 
-        const IX_DATA_LEN: usize = 1 // selector
-        + size_of::<u8>() // authority_type
-        + size_of::<u8>() + size_of::<Pubkey>(); // new_authority
+        const IX_DATA_LEN: usize = {
+            size_of::<u8>() // selector
+            + size_of::<u8>() // authority_type
+            + size_of::<u8>() + size_of::<Pubkey>() // new_authority
+        };
 
         let mut instruction_data = [0; IX_DATA_LEN];
 

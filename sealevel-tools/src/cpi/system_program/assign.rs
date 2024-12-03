@@ -32,8 +32,10 @@ pub(super) fn _invoke_assign(to: &CpiAuthority, owner: &Pubkey) {
     .invoke_possibly_signed(&[to.to_info_c()], &[to.signer_seeds]);
 }
 
-const IX_DATA_LEN: usize = 4 // selector
-    + core::mem::size_of::<Pubkey>(); // owner
+const IX_DATA_LEN: usize = {
+    4 // selector
+    + core::mem::size_of::<Pubkey>() // owner
+};
 
 #[inline(always)]
 fn _serialize_instruction_data(owner: &Pubkey) -> [u8; IX_DATA_LEN] {

@@ -21,8 +21,10 @@ impl<'a> InitializePermanentDelegate<'a> {
             delegate,
         } = self;
 
-        const IX_DATA_LEN: usize = size_of::<u8>() // token instruction selector
-            + size_of::<Pubkey>(); // delegate
+        const IX_DATA_LEN: usize = {
+            size_of::<u8>() // token instruction selector
+            + size_of::<Pubkey>() // delegate
+        };
 
         let mut instruction_data = [0; IX_DATA_LEN];
 

@@ -53,6 +53,8 @@ pub struct InitMintWithExtensionsData {
     pub permanent_delegate: bool,
     pub transfer_fee: bool,
     pub transfer_hook: bool,
+    pub confidential_transfer: bool,
+    pub confidential_transfer_fee: bool,
 }
 
 impl InitMintWithExtensionsData {
@@ -64,6 +66,8 @@ impl InitMintWithExtensionsData {
     const PERMANENT_DELEGATE_BIT: u16 = 0b10_0000;
     const TRANSFER_FEE_BIT: u16 = 0b100_0000;
     const TRANSFER_HOOK_BIT: u16 = 0b1000_0000;
+    const CONFIDENTIAL_TRANSFER_BIT: u16 = 0b1_0000_0000;
+    const CONFIDENTIAL_TRANSFER_FEE_BIT: u16 = 0b10_0000_0000;
 }
 
 impl BorshDeserialize for InitMintWithExtensionsData {
@@ -81,6 +85,9 @@ impl BorshDeserialize for InitMintWithExtensionsData {
         let permanent_delegate = (extensions_flags & Self::PERMANENT_DELEGATE_BIT) != 0;
         let transfer_fee = (extensions_flags & Self::TRANSFER_FEE_BIT) != 0;
         let transfer_hook = (extensions_flags & Self::TRANSFER_HOOK_BIT) != 0;
+        let confidential_transfer = (extensions_flags & Self::CONFIDENTIAL_TRANSFER_BIT) != 0;
+        let confidential_transfer_fee =
+            (extensions_flags & Self::CONFIDENTIAL_TRANSFER_FEE_BIT) != 0;
 
         Ok(Self {
             decimals,
@@ -93,6 +100,8 @@ impl BorshDeserialize for InitMintWithExtensionsData {
             permanent_delegate,
             transfer_fee,
             transfer_hook,
+            confidential_transfer,
+            confidential_transfer_fee,
         })
     }
 }
@@ -103,7 +112,7 @@ impl BorshSerialize for InitMintWithExtensionsData {
         self.decimals.serialize(writer)?;
         self.freeze_authority.serialize(writer)?;
 
-        let mut extensions_flags = 0_u16;
+        let mut extensions_flags = u16::default();
         if self.close_authority {
             extensions_flags |= Self::CLOSE_AUTHORITY_BIT;
         }
@@ -127,6 +136,12 @@ impl BorshSerialize for InitMintWithExtensionsData {
         }
         if self.transfer_hook {
             extensions_flags |= Self::TRANSFER_HOOK_BIT;
+        }
+        if self.confidential_transfer {
+            extensions_flags |= Self::CONFIDENTIAL_TRANSFER_BIT;
+        }
+        if self.confidential_transfer_fee {
+            extensions_flags |= Self::CONFIDENTIAL_TRANSFER_FEE_BIT;
         }
         extensions_flags.serialize(writer)
     }

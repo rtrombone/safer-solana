@@ -26,7 +26,7 @@ impl<'a> GetAccountDataSize<'a> {
             extensions,
         } = self;
 
-        const IX_DATA_LEN_FIXED: usize = 1; // selector
+        const IX_DATA_LEN_FIXED: usize = core::mem::size_of::<u8>(); // selector
 
         // Get account data size selector == 21.
         let mut instruction_data =

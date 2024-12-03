@@ -48,19 +48,25 @@ use core::mem::size_of;
 
 use crate::{error::SealevelToolsError, program_pack::Pack, pubkey::Pubkey};
 
-const BASE_WITH_EXTENSIONS_LEN: usize = spl_token_2022::state::Account::LEN // base size
-    + size_of::<u8>(); // account type size
+const BASE_WITH_EXTENSIONS_LEN: usize = {
+    spl_token_2022::state::Account::LEN // base size
+    + size_of::<u8>() // account type size
+};
 
-const EMPTY_EXTENSION_LEN: usize = 2 // type
-    + 2; // length
+const EMPTY_EXTENSION_LEN: usize = {
+    size_of::<u16>() // type
+    + size_of::<u16>() // length
+};
 
 const ERROR_EXPECTED_TOKEN_PROGRAM: SealevelToolsError<'static> =
     SealevelToolsError::Cpi(&["Expected legacy SPL Token or Token Extensions program as ID"]);
 const ERROR_EXTENSIONS_UNSUPPORTED: SealevelToolsError<'static> =
     SealevelToolsError::Cpi(&["Extensions only supported with SPL Token Extensions program"]);
 
-const IX_AMOUNT_DATA_LEN: usize = 1 // selector
-    + size_of::<u64>(); // amount
+const IX_AMOUNT_DATA_LEN: usize = {
+    size_of::<u8>() // selector
+    + size_of::<u64>() // amount
+};
 
 #[inline(always)]
 fn serialize_amount_instruction_data(selector: u8, amount: u64) -> [u8; IX_AMOUNT_DATA_LEN] {
@@ -72,9 +78,11 @@ fn serialize_amount_instruction_data(selector: u8, amount: u64) -> [u8; IX_AMOUN
     instruction_data
 }
 
-const IX_CHECKED_AMOUNT_DATA_LEN: usize = 1 // selector
+const IX_CHECKED_AMOUNT_DATA_LEN: usize = {
+    1 // selector
     + size_of::<u64>() // amount
-    + size_of::<u8>(); // decimals
+    + size_of::<u8>() // decimals
+};
 
 #[inline(always)]
 fn serialize_checked_amount_instruction_data(
@@ -91,8 +99,10 @@ fn serialize_checked_amount_instruction_data(
     instruction_data
 }
 
-const IX_PUBKEY_DATA_LEN: usize = 1 // selector
-    + size_of::<Pubkey>(); // owner or delegate
+const IX_PUBKEY_DATA_LEN: usize = {
+    1 // selector
+    + size_of::<Pubkey>() // owner or delegate
+};
 
 #[inline(always)]
 fn serialize_authority_instruction_data(

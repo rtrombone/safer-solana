@@ -102,8 +102,17 @@ pub struct InitializeMintExtensions<'a> {
     pub permanent_delegate: Option<&'a Pubkey>,
     pub transfer_fee_config: Option<InitializeTransferFeeConfigData<'a>>,
     pub transfer_hook: Option<InitializeTransferHookData<'a>>,
-}
 
+    /// If specified, [Self::transfer_fee_config] cannot be specified unless
+    /// [Self::confidential_transfer_fee_config] is also specified.
+    pub confidential_transfer: Option<InitializeConfidentialTransferData<'a>>,
+
+    /// If specified, [Self::transfer_fee_config] and [Self::confidential_transfer] must also be
+    /// specified.
+    pub confidential_transfer_fee_config: Option<InitializeConfidentialTransferFeeConfigData<'a>>,
+    // FIXME: Uncomment when the extension is implemented.
+    //pub confidential_mint_burn: Option<InitializeConfidentialMintBurnData<'a>>,
+}
 /// Data required to initialize the group pointer extension, which is used to establish a collection
 /// of mints.
 pub struct InitializeGroupPointerData<'a> {
@@ -190,11 +199,55 @@ pub struct InitializeTransferHookData<'a> {
     pub program_id: &'a Pubkey,
 }
 
-const ONLY_AUTHORITY_LEN: usize = EMPTY_EXTENSION_LEN // type + length
-    + size_of::<Pubkey>(); // authority
+/// Data required to initialize the confidential transfer extension, which is used to hide the
+/// transfer amount.
+pub struct InitializeConfidentialTransferData<'a> {
+    /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
+    /// accounts.
+    pub authority: Option<&'a Pubkey>,
 
-const AUTHORITY_POINTER_LEN: usize = ONLY_AUTHORITY_LEN // type + length + authority
-    + size_of::<Pubkey>(); // pointer
+    /// Determines if newly configured accounts must be approved by [Self::authority] before they
+    /// may be used by the user.
+    pub auto_approve_new_accounts: bool,
+
+    /// New authority to decode any transfer amount in a confidential transfer.
+    pub auditor_elgamal: Option<&'a [u8; 32]>,
+}
+
+/// Data required to initialize the confidential transfer fee extension, which is used to hide the
+/// transfer fee amount.
+pub struct InitializeConfidentialTransferFeeConfigData<'a> {
+    /// Optional authority to set the withdraw withheld authority ElGamal key.
+    pub authority: Option<&'a Pubkey>,
+
+    /// Withheld fees from accounts must be encrypted with this ElGamal key.
+    ///
+    /// Note that whoever holds the ElGamal private key for this ElGamal public key has the ability
+    /// to decode any withheld fee amount that are associated with accounts. When combined with the
+    /// fee parameters, the withheld fee amounts can reveal information about transfer amounts.
+    pub withdraw_withheld_authority_elgamal: &'a [u8; 32],
+}
+
+// FIXME: Uncomment when the extension is implemented.
+// /// Data required to initialize the confidential mint burn extension, which is used to hide the
+// /// supply amount.
+// pub struct InitializeConfidentialMintBurnData<'a> {
+//     /// The ElGamal pubkey used to encrypt the confidential supply.
+//     pub supply_elgamal: &'a [u8; 32],
+
+//     /// The initial 0 supply encrypted with the supply aes key.
+//     pub decryptable_supply: &'a [u8; 36],
+// }
+
+const ONLY_AUTHORITY_LEN: usize = {
+    EMPTY_EXTENSION_LEN // type + length
+    + size_of::<Pubkey>() // authority
+};
+
+const AUTHORITY_POINTER_LEN: usize = {
+    ONLY_AUTHORITY_LEN // type + length + authority
+    + size_of::<Pubkey>() // pointer
+};
 
 impl<'a, 'b: 'a> CreateMint<'a, 'b> {
     /// Try to consume arguments to perform CPI calls.
@@ -222,6 +275,10 @@ impl<'a, 'b: 'a> CreateMint<'a, 'b> {
                     permanent_delegate,
                     transfer_fee_config,
                     transfer_hook,
+                    confidential_transfer,
+                    confidential_transfer_fee_config,
+                    // FIXME: Uncomment when the extension is implemented.
+                    // confidential_mint_burn,
                 },
         } = self;
 
@@ -232,6 +289,10 @@ impl<'a, 'b: 'a> CreateMint<'a, 'b> {
         let add_permanent_delegate = permanent_delegate.is_some();
         let add_transfer_fee_config = transfer_fee_config.is_some();
         let add_transfer_hook = transfer_hook.is_some();
+        let add_confidential_transfer = confidential_transfer.is_some();
+        let add_confidential_transfer_fee_config = confidential_transfer_fee_config.is_some();
+        // FIXME: Uncomment when the extension is implemented.
+        // let add_confidential_mint_burn = confidential_mint_burn.is_some();
 
         let mint_account = if add_close_authority
             || add_group_pointer
@@ -241,6 +302,10 @@ impl<'a, 'b: 'a> CreateMint<'a, 'b> {
             || add_permanent_delegate
             || add_transfer_fee_config
             || add_transfer_hook
+            || add_confidential_transfer
+            || add_confidential_transfer_fee_config
+        // FIXME: Uncomment when the extension is implemented.
+        // || add_confidential_mint_burn
         {
             if token_program_id != &spl_token_2022::ID {
                 return Err(super::ERROR_EXTENSIONS_UNSUPPORTED.into());
@@ -284,6 +349,32 @@ impl<'a, 'b: 'a> CreateMint<'a, 'b> {
             if add_transfer_hook {
                 total_space += AUTHORITY_POINTER_LEN;
             }
+            if add_confidential_transfer {
+                total_space += {
+                    EMPTY_EXTENSION_LEN // type + length
+                    + size_of::<Pubkey>() // authority
+                    + size_of::<u8>() // auto_approve_new_accounts
+                    + size_of::<Pubkey>() // auditor_elgamal
+                };
+            }
+            if add_confidential_transfer_fee_config {
+                total_space += {
+                    EMPTY_EXTENSION_LEN // type + length
+                    + size_of::<Pubkey>() // authority
+                    + size_of::<[u8; 32]>() // withdraw_withheld_authority_elgamal
+                    + size_of::<bool>() // harvest_to_mint_enabled
+                    + 64 // withheld_amount (encrypted)
+                };
+            }
+            // FIXME: Uncomment when the extension is implemented.
+            // if add_confidential_mint_burn {
+            //     total_space += {
+            //         EMPTY_EXTENSION_LEN // type + length
+            //         + 64 // confidential_supply
+            //         + 36 // decryptable_supply
+            //         + 32 // supply_elgamal
+            //     };
+            // }
 
             // First create the mint account by assigning it to the token program.
             let mint_account = CreateAccount {
@@ -391,6 +482,51 @@ impl<'a, 'b: 'a> CreateMint<'a, 'b> {
                 .into_invoke();
             }
 
+            if let Some(InitializeConfidentialTransferData {
+                authority,
+                auto_approve_new_accounts,
+                auditor_elgamal,
+            }) = confidential_transfer
+            {
+                super::extensions::InitializeConfidentialTransfer {
+                    token_program_id,
+                    mint: &mint_account,
+                    authority,
+                    auto_approve_new_accounts,
+                    auditor_elgamal,
+                }
+                .into_invoke();
+            }
+
+            if let Some(InitializeConfidentialTransferFeeConfigData {
+                authority,
+                withdraw_withheld_authority_elgamal,
+            }) = confidential_transfer_fee_config
+            {
+                super::extensions::InitializeConfidentialTransferFeeConfig {
+                    token_program_id,
+                    mint: &mint_account,
+                    authority,
+                    withdraw_withheld_authority_elgamal,
+                }
+                .into_invoke();
+            }
+
+            // FIXME: Uncomment when the extension is implemented.
+            // if let Some(InitializeConfidentialMintBurnData {
+            //     supply_elgamal,
+            //     decryptable_supply,
+            // }) = confidential_mint_burn
+            // {
+            //     super::extensions::InitializeConfidentialMintBurn {
+            //         token_program_id,
+            //         mint: &mint_account,
+            //         supply_elgamal,
+            //         decryptable_supply,
+            //     }
+            //     .into_invoke();
+            // }
+
             mint_account
         } else {
             if !is_any_token_program_id(token_program_id) {
@@ -466,10 +602,12 @@ fn _invoke_initialize_mint2(
     freeze_authority: Option<&Pubkey>,
     decimals: u8,
 ) {
-    const IX_DATA_LEN: usize = 1 // selector
-    + 1 // decimals
-    + 32 // mint_authority
-    + 1 + 32; // freeze_authority
+    const IX_DATA_LEN: usize = {
+        size_of::<u8>() // selector
+        + size_of::<u8>() // decimals
+        + size_of::<Pubkey>() // mint_authority
+        + size_of::<u8>() + size_of::<Pubkey>() // freeze_authority
+    };
 
     let mut instruction_data = [0; IX_DATA_LEN];
 

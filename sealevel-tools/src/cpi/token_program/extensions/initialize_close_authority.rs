@@ -21,9 +21,11 @@ impl<'a> InitializeMintCloseAuthority<'a> {
             authority,
         } = self;
 
-        const IX_DATA_LEN: usize = size_of::<u8>() // token instruction selector
+        const IX_DATA_LEN: usize = {
+            size_of::<u8>() // token instruction selector
             + size_of::<u8>() // authority.is_some()
-            + size_of::<Pubkey>(); // authority
+            + size_of::<Pubkey>() // authority
+        };
 
         let mut instruction_data = [0; IX_DATA_LEN];
 

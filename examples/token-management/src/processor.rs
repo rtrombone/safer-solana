@@ -82,6 +82,8 @@ pub fn init_mint_with_extensions(
         permanent_delegate,
         transfer_fee,
         transfer_hook,
+        confidential_transfer,
+        confidential_transfer_fee,
     }: InitMintWithExtensionsData,
 ) -> ProgramResult {
     // solana_program::log::sol_log_compute_units();
@@ -161,6 +163,25 @@ pub fn init_mint_with_extensions(
                 authority: Some(&mint_authority_addr),
                 program_id: &crate::ID,
             })
+        } else {
+            None
+        },
+        confidential_transfer: if confidential_transfer {
+            Some(token_program_cpi::InitializeConfidentialTransferData {
+                authority: Some(&mint_authority_addr),
+                auto_approve_new_accounts: true,
+                auditor_elgamal: Some(&[1; 32]),
+            })
+        } else {
+            None
+        },
+        confidential_transfer_fee_config: if confidential_transfer_fee {
+            Some(
+                token_program_cpi::InitializeConfidentialTransferFeeConfigData {
+                    authority: Some(&mint_authority_addr),
+                    withdraw_withheld_authority_elgamal: &[2; 32],
+                },
+            )
         } else {
             None
         },

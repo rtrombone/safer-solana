@@ -324,7 +324,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_550,
+        7_600,
         CU_TOLERANCE
     ));
 
@@ -348,7 +348,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_550,
+        7_600,
         CU_TOLERANCE
     ));
 
@@ -444,7 +444,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        8_550,
+        8_600,
         CU_TOLERANCE
     ));
 
@@ -472,6 +472,56 @@ async fn test_init_mint_with_extensions() {
         CU_TOLERANCE
     ));
 
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            confidential_transfer: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        7_600,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
+        spl_token_2022::ID,
+        decimals,
+        None, // freeze_authority
+        Some(MintExtensionsForTest {
+            transfer_fee: true,
+            confidential_transfer: true,
+            confidential_transfer_fee: true,
+            ..Default::default()
+        }),
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    // NOTE: Mint bump is 252, which requires 4 iterations to find the mint key. Authority bump is
+    // 255, which requires 1 iteration to find the authority key. Each bump iteration costs 1,500
+    // CU.
+    let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
+    assert!(is_compute_units_within(
+        adjusted_compute_units_consumed,
+        13_100,
+        CU_TOLERANCE
+    ));
+
     // Now add them all.
 
     let TestSuccess { tx_meta, .. } = InitMintTest::set_up(
@@ -487,6 +537,8 @@ async fn test_init_mint_with_extensions() {
             permanent_delegate: true,
             transfer_fee: true,
             transfer_hook: true,
+            confidential_transfer: true,
+            confidential_transfer_fee: true,
         }),
     )
     .await
@@ -500,7 +552,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        25_500,
+        31_300,
         CU_TOLERANCE
     ));
 }
@@ -986,6 +1038,8 @@ struct MintExtensionsForTest {
     permanent_delegate: bool,
     transfer_fee: bool,
     transfer_hook: bool,
+    confidential_transfer: bool,
+    confidential_transfer_fee: bool,
 }
 
 impl InitMintTest {
@@ -1029,6 +1083,8 @@ impl InitMintTest {
                     permanent_delegate,
                     transfer_fee,
                     transfer_hook,
+                    confidential_transfer,
+                    confidential_transfer_fee,
                 },
         } = self;
         dbg!(
@@ -1042,7 +1098,9 @@ impl InitMintTest {
             non_transferable,
             permanent_delegate,
             transfer_fee,
-            transfer_hook
+            transfer_hook,
+            confidential_transfer,
+            confidential_transfer_fee,
         );
 
         let (new_mint_addr, mint_bump) = state::find_mint_address();
@@ -1067,6 +1125,8 @@ impl InitMintTest {
                 permanent_delegate,
                 transfer_fee,
                 transfer_hook,
+                confidential_transfer,
+                confidential_transfer_fee,
             }))
             .unwrap(),
         };
@@ -1190,6 +1250,42 @@ impl InitMintTest {
             assert_eq!(transfer_hook_data.program_id.0, ID);
         } else {
             assert!(transfer_hook_result.is_err());
+        }
+
+        let confidential_transfer_result = mint_data
+            .get_extension::<spl_token_2022::extension::confidential_transfer::ConfidentialTransferMint>(
+        );
+        if confidential_transfer {
+            let confidential_transfer_data = confidential_transfer_result.unwrap();
+            assert_eq!(confidential_transfer_data.authority.0, mint_authority_addr);
+            assert!(bool::from(
+                confidential_transfer_data.auto_approve_new_accounts
+            ));
+            assert!(confidential_transfer_data
+                .auditor_elgamal_pubkey
+                .equals(&[1; 32].into()));
+        } else {
+            assert!(confidential_transfer_result.is_err());
+        }
+
+        let confidential_transfer_fee_config_result = mint_data
+            .get_extension::<spl_token_2022::extension::confidential_transfer_fee::ConfidentialTransferFeeConfig>(
+        );
+        if confidential_transfer_fee {
+            let confidential_transfer_fee_config_data =
+                confidential_transfer_fee_config_result.unwrap();
+            assert_eq!(
+                confidential_transfer_fee_config_data.authority.0,
+                mint_authority_addr
+            );
+            assert_eq!(
+                confidential_transfer_fee_config_data
+                    .withdraw_withheld_authority_elgamal_pubkey
+                    .to_string(),
+                String::from("AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=")
+            );
+        } else {
+            assert!(confidential_transfer_fee_config_result.is_err());
         }
 
         TestSuccess {
