@@ -94,7 +94,7 @@ async fn test_thing() {
     assert!(!is_program_failure(&ID, &tx_meta.log_messages));
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        265,
+        290,
         CU_TOLERANCE
     ));
 

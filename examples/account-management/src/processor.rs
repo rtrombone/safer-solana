@@ -63,7 +63,10 @@ pub fn update_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult 
     // program because the write will fail if it isn't.
     let (_, mut thing_account) = try_next_enumerated_account::<WritableThingAccount>(
         &mut accounts_iter,
-        Default::default(),
+        EnumeratedAccountConstraints {
+            owner: Some(&ID),
+            ..Default::default()
+        },
     )?;
 
     // solana_program::log::sol_log_compute_units();
