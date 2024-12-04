@@ -64,6 +64,40 @@ pub struct EnumeratedAccountConstraints<'a, 'b: 'a> {
     pub max_lamports: Option<u64>,
 }
 
+/// Convenient default for [EnumeratedAccountConstraints] where an integrator can define a const
+/// constraint by using the struct spread operator.
+///
+/// # Example
+///
+/// ```
+/// use sealevel_tools::account_info::{EnumeratedAccountConstraints, NO_CONSTRAINTS};
+///
+/// sealevel_tools::declare_id!("MyProgram1111111111111111111111111111111111");
+///
+/// const OWNED_BY_THIS_PROGRAM: EnumeratedAccountConstraints<'static, 'static>
+///     = EnumeratedAccountConstraints {
+///         owner: Some(&ID),
+///         ..NO_CONSTRAINTS
+///     };
+/// ```
+pub const NO_CONSTRAINTS: EnumeratedAccountConstraints<'static, 'static> =
+    EnumeratedAccountConstraints {
+        key: None,
+        any_of_keys: None,
+        owner: None,
+        any_of_owners: None,
+        seeds: None,
+        is_signer: None,
+        is_writable: None,
+        executable: None,
+        exact_data_len: None,
+        min_data_len: None,
+        max_data_len: None,
+        match_data_slice: None,
+        min_lamports: None,
+        max_lamports: None,
+    };
+
 /// Slice of data to match against the next account's data.
 #[derive(Debug, Default)]
 pub struct MatchDataSlice<'a> {

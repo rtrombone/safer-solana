@@ -1,11 +1,17 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use sealevel_tools::{
     account::BorshAccountSchema,
-    account_info::WritableBorshAccount,
+    account_info::{EnumeratedAccountConstraints, WritableBorshAccount, NO_CONSTRAINTS},
     discriminator::{Discriminate, Discriminator},
     pda::DeriveAddress,
     pubkey::Pubkey,
 };
+
+pub(super) const OWNED_BY_THIS_PROGRAM: EnumeratedAccountConstraints<'static, 'static> =
+    EnumeratedAccountConstraints {
+        owner: Some(&crate::ID),
+        ..NO_CONSTRAINTS
+    };
 
 #[derive(Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize)]
 pub struct Thing {

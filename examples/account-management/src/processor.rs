@@ -11,7 +11,7 @@ use sealevel_tools::{
 };
 
 use crate::{
-    state::{Thing, WritableThingAccount},
+    state::{Thing, WritableThingAccount, OWNED_BY_THIS_PROGRAM},
     ID,
 };
 
@@ -63,10 +63,7 @@ pub fn update_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult 
     // program because the write will fail if it isn't.
     let (_, mut thing_account) = try_next_enumerated_account::<WritableThingAccount>(
         &mut accounts_iter,
-        EnumeratedAccountConstraints {
-            owner: Some(&ID),
-            ..Default::default()
-        },
+        OWNED_BY_THIS_PROGRAM,
     )?;
 
     // solana_program::log::sol_log_compute_units();
