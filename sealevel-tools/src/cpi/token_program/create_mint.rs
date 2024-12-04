@@ -116,7 +116,7 @@ pub struct InitializeMintExtensions<'a> {
 /// Data required to initialize the group pointer extension, which is used to establish a collection
 /// of mints.
 pub struct InitializeGroupPointerData<'a> {
-    /// Who has authority to update the group. If [None], the group cannot be modified.
+    /// Who has authority to update the group pointer. If [None], the group cannot be modified.
     pub authority: Option<&'a Pubkey>,
 
     /// Where the group is stored.
@@ -133,11 +133,15 @@ pub struct InitializeGroupPointerData<'a> {
 /// Data required to initialize the group member pointer extension, which is used to associate a
 /// mint with a group (via group pointer extension).
 pub struct InitializeGroupMemberPointerData<'a> {
-    /// Who has authority to update the group member. If [None], the group member cannot be
+    /// Who has authority to update the group member pointer. If [None], the group member cannot be
     /// modified.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     pub authority: Option<&'a Pubkey>,
 
     /// Where the group member is stored.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     ///
     /// ### Notes
     ///
@@ -151,10 +155,15 @@ pub struct InitializeGroupMemberPointerData<'a> {
 /// Data required to initialize the metadata pointer extension, which is used to add descriptive
 /// information to a mint.
 pub struct InitializeMetadataPointerData<'a> {
-    /// Who has authority to update metadata. If [None], the metadata cannot be modified.
+    /// Who has authority to update the metadata pointer. If [None], the metadata cannot be
+    /// modified.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     pub authority: Option<&'a Pubkey>,
 
     /// Where the metadata is stored.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     ///
     /// ### Notes
     ///
@@ -168,10 +177,15 @@ pub struct InitializeMetadataPointerData<'a> {
 /// Data required to initialize the transfer fee extension, which is used to charge a fee for
 /// transferring tokens.
 pub struct InitializeTransferFeeConfigData<'a> {
-    /// Who has authority to update the config. If [None], the config cannot be modified.
+    /// Who has authority to update the configuration parameters. If [None], the config cannot be
+    /// modified.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     pub config_authority: Option<&'a Pubkey>,
 
     /// Who has authority to withhold fees. If [None], no one can withdraw fees.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     pub withdraw_withheld_authority: Option<&'a Pubkey>,
 
     /// The basis points for the fee. Cannot exceed
@@ -186,9 +200,13 @@ pub struct InitializeTransferFeeConfigData<'a> {
 /// when transferring tokens.
 pub struct InitializeTransferHookData<'a> {
     /// Who has authority to update the program ID. If [None], the program ID cannot be modified.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     pub authority: Option<&'a Pubkey>,
 
     /// Program for transfer hook CPI.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     ///
     /// ### Notes
     ///
@@ -202,8 +220,10 @@ pub struct InitializeTransferHookData<'a> {
 /// Data required to initialize the confidential transfer extension, which is used to hide the
 /// transfer amount.
 pub struct InitializeConfidentialTransferData<'a> {
-    /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
+    /// Authority to modify the confidential transfer configuration parameters and to approve new
     /// accounts.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     pub authority: Option<&'a Pubkey>,
 
     /// Determines if newly configured accounts must be approved by [Self::authority] before they
@@ -211,13 +231,18 @@ pub struct InitializeConfidentialTransferData<'a> {
     pub auto_approve_new_accounts: bool,
 
     /// New authority to decode any transfer amount in a confidential transfer.
+    ///
+    /// `Some(&[0; 32])` is analogous to [None] in this context.
     pub auditor_elgamal: Option<&'a [u8; 32]>,
 }
 
 /// Data required to initialize the confidential transfer fee extension, which is used to hide the
 /// transfer fee amount.
 pub struct InitializeConfidentialTransferFeeConfigData<'a> {
-    /// Optional authority to set the withdraw withheld authority ElGamal key.
+    /// Optional authority to set the withdraw withheld authority ElGamal key. If [None], the
+    /// withdraw withheld authority ElGamal key cannot be modified.
+    ///
+    /// `Some(&Pubkey::default())` is analogous to [None] in this context.
     pub authority: Option<&'a Pubkey>,
 
     /// Withheld fees from accounts must be encrypted with this ElGamal key.
