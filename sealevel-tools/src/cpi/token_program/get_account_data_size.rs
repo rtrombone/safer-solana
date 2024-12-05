@@ -10,6 +10,7 @@ use super::ExtensionType;
 
 /// Arguments for the get account data size instruction on the specified Token program, which
 /// retrieves the size of a token account data for a mint.
+#[derive(Clone, PartialEq)]
 pub struct GetAccountDataSize<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

@@ -5,6 +5,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// Arguments for the initialize transfer fee config instruction on the specified Token program,
 /// which establishes a fee to be withheld whenever someone transfers tokens between token accounts.
 /// This instruction must be called before a mint is initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeTransferFeeConfig<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

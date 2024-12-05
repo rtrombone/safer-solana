@@ -3,6 +3,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// Arguments for the initialize transfer hook instruction on the specified Token program, which
 /// establishes a program for executing external logic associated with a token transfer. This
 /// instruction must be called before a mint is initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeTransferHook<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

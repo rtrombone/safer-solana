@@ -3,6 +3,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// Arguments for the initialize immutable owner instruction on the specified Token program, which
 /// prevents the owner of a token account from being updated. This instruction must be called
 /// before a token account is initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeImmutableOwner<'a> {
     pub token_program_id: &'a Pubkey,
     pub account: &'a NoStdAccountInfo,

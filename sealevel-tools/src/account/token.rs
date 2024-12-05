@@ -18,6 +18,7 @@ use crate::{
 use super::AccountSerde;
 
 /// Wrapper around a type implementing [BaseState] and [Pack].
+#[derive(Clone, PartialEq, Eq)]
 pub struct StateWithExtensionsBaseSchema<T: BaseState + Pack>(pub T);
 
 impl<T: BaseState + Pack> Discriminate<0> for StateWithExtensionsBaseSchema<T> {

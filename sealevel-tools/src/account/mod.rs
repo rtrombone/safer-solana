@@ -142,6 +142,7 @@ where
 }
 
 /// Wrapper around a type implementing [Pack] and [IsInitialized].
+#[derive(Clone, PartialEq, Eq)]
 pub struct PackAccountSchema<T: Pack + IsInitialized>(pub T);
 
 impl<T: Pack + IsInitialized> Discriminate<0> for PackAccountSchema<T> {

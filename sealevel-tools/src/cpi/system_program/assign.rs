@@ -5,6 +5,7 @@ use crate::{
 
 /// Arguments for the assign instruction on the System program, which assigns ownership of a
 /// System-owned account to another program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Assign<'a, 'b: 'a> {
     pub to: CpiAuthority<'a, 'b>,
     pub owner: &'a Pubkey,

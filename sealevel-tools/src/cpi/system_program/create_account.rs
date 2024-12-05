@@ -19,7 +19,7 @@ use crate::{
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, EnumeratedAccountConstraints, Payer, Program,
+///         try_next_enumerated_account, AccountInfoConstraints, Payer, Program,
 ///         WritableAccount,
 ///     },
 ///     cpi::system_program::CreateAccount,
@@ -44,7 +44,7 @@ use crate::{
 ///     // Next account must be writable data account matching PDA address.
 ///     let (_, new_account) = try_next_enumerated_account::<WritableAccount>(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&new_thing_addr),
 ///             ..Default::default()
 ///         },
@@ -69,7 +69,7 @@ use crate::{
 ///     borsh::{BorshDeserialize, BorshSerialize},
 ///     account::{AccountSerde, BorshAccountSchema},
 ///     account_info::{
-///         try_next_enumerated_account, EnumeratedAccountConstraints, Payer, Program,
+///         try_next_enumerated_account, AccountInfoConstraints, Payer, Program,
 ///         WritableAccount,
 ///     },
 ///     cpi::system_program::CreateAccount,
@@ -105,7 +105,7 @@ use crate::{
 ///     // Next account must be writable data account matching PDA address.
 ///     let (_, new_account) = try_next_enumerated_account::<WritableAccount>(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&new_thing_addr),
 ///             ..Default::default()
 ///         },
@@ -125,6 +125,7 @@ use crate::{
 ///     Ok(())
 /// }
 /// ```
+#[derive(Clone, PartialEq, Eq)]
 pub struct CreateAccount<'a, 'b: 'a> {
     /// The account that will pay for the rent.
     ///

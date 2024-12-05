@@ -27,7 +27,7 @@ use super::EMPTY_EXTENSION_LEN;
 /// use sealevel_tools::{
 ///     account_info::{
 ///         try_next_enumerated_account, try_next_enumerated_account_info, TokenProgram,
-///         EnumeratedAccountConstraints, Payer, WritableAccount,
+///         AccountInfoConstraints, Payer, WritableAccount,
 ///     },
 ///     cpi::token_program::CreateTokenAccount,
 ///     entrypoint::{NoStdAccountInfo, ProgramResult},
@@ -51,7 +51,7 @@ use super::EMPTY_EXTENSION_LEN;
 ///     // Next account must be writable data account matching PDA address.
 ///     let (_, new_token_account) = try_next_enumerated_account::<WritableAccount>(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&new_token_addr),
 ///             ..Default::default()
 ///         },
@@ -84,6 +84,7 @@ use super::EMPTY_EXTENSION_LEN;
 ///     Ok(())
 /// }
 /// ```
+#[derive(Clone, PartialEq, Eq)]
 pub struct CreateTokenAccount<'a, 'b: 'a> {
     pub payer: CpiAuthority<'a, 'b>,
     pub token_account: CpiAuthority<'a, 'b>,
@@ -196,6 +197,7 @@ impl<'a, 'b: 'a> CreateTokenAccount<'a, 'b> {
 ///
 /// It is preferred to use [CreateTokenAccount] instead of this method because it will create
 /// the account and initialize it as a token account in one action.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeAccount<'a> {
     pub token_program_id: &'a Pubkey,
     pub account: &'a NoStdAccountInfo,

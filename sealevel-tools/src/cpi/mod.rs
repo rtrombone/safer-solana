@@ -25,6 +25,7 @@ use crate::{
 
 /// Associate signer seeds with an [NoStdAccountInfo]. Signer seeds may be [None] if
 /// [NoStdAccountInfo::is_signer] is true.
+#[derive(Clone, PartialEq, Eq)]
 pub struct CpiAuthority<'a, 'b: 'a> {
     pub account: &'b NoStdAccountInfo,
     pub signer_seeds: Option<&'a [&'b [u8]]>,
@@ -61,6 +62,7 @@ pub fn unwrap_signers_seeds<'a, 'b: 'a, const NUM_POSSIBLE: usize>(
 
 /// Setup to invoke a cross-program instruction. To avoid using heap memory, it is recommended to
 /// pass in references to fixed arrays of accounts and infos.
+#[derive(Debug, Clone)]
 pub struct CpiInstruction<'a> {
     pub program_id: &'a Pubkey,
 

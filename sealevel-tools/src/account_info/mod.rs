@@ -17,7 +17,7 @@ use crate::{
 /// Optional arguments for [try_next_enumerated_account_info], which specify constraints for the next
 /// [NoStdAccountInfo].
 #[derive(Debug, Default)]
-pub struct EnumeratedAccountConstraints<'a, 'b: 'a> {
+pub struct AccountInfoConstraints<'a, 'b: 'a> {
     /// If provided, the next account's key must equal this pubkey.
     pub key: Option<&'a Pubkey>,
 
@@ -64,39 +64,38 @@ pub struct EnumeratedAccountConstraints<'a, 'b: 'a> {
     pub max_lamports: Option<u64>,
 }
 
-/// Convenient default for [EnumeratedAccountConstraints] where an integrator can define a const
+/// Convenient default for [AccountInfoConstraints] where an integrator can define a const
 /// constraint by using the struct spread operator.
 ///
 /// # Example
 ///
 /// ```
-/// use sealevel_tools::account_info::{EnumeratedAccountConstraints, NO_CONSTRAINTS};
+/// use sealevel_tools::account_info::{AccountInfoConstraints, NO_CONSTRAINTS};
 ///
 /// sealevel_tools::declare_id!("MyProgram1111111111111111111111111111111111");
 ///
-/// const OWNED_BY_THIS_PROGRAM: EnumeratedAccountConstraints<'static, 'static>
-///     = EnumeratedAccountConstraints {
+/// const OWNED_BY_THIS_PROGRAM: AccountInfoConstraints<'static, 'static>
+///     = AccountInfoConstraints {
 ///         owner: Some(&ID),
 ///         ..NO_CONSTRAINTS
 ///     };
 /// ```
-pub const NO_CONSTRAINTS: EnumeratedAccountConstraints<'static, 'static> =
-    EnumeratedAccountConstraints {
-        key: None,
-        any_of_keys: None,
-        owner: None,
-        any_of_owners: None,
-        seeds: None,
-        is_signer: None,
-        is_writable: None,
-        executable: None,
-        exact_data_len: None,
-        min_data_len: None,
-        max_data_len: None,
-        match_data_slice: None,
-        min_lamports: None,
-        max_lamports: None,
-    };
+pub const NO_CONSTRAINTS: AccountInfoConstraints<'static, 'static> = AccountInfoConstraints {
+    key: None,
+    any_of_keys: None,
+    owner: None,
+    any_of_owners: None,
+    seeds: None,
+    is_signer: None,
+    is_writable: None,
+    executable: None,
+    exact_data_len: None,
+    min_data_len: None,
+    max_data_len: None,
+    match_data_slice: None,
+    min_lamports: None,
+    max_lamports: None,
+};
 
 /// Slice of data to match against the next account's data.
 #[derive(Debug, Default)]
@@ -117,7 +116,7 @@ pub struct MatchDataSlice<'a> {
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account_info, EnumeratedAccountConstraints,
+///         try_next_enumerated_account_info, AccountInfoConstraints,
 ///     },
 ///     entrypoint::{NoStdAccountInfo, ProgramResult},
 ///     pubkey::Pubkey,
@@ -133,7 +132,7 @@ pub struct MatchDataSlice<'a> {
 ///     // Next account must be the clock sysvar.
 ///     let (index, account) = try_next_enumerated_account_info(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&solana_program::sysvar::clock::ID),
 ///             ..Default::default()
 ///         })?;
@@ -141,7 +140,7 @@ pub struct MatchDataSlice<'a> {
 ///     // Next account must be writable.
 ///     let (index, account) = try_next_enumerated_account_info(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             is_writable: Some(true),
 ///             ..Default::default()
 ///         })?;
@@ -152,7 +151,7 @@ pub struct MatchDataSlice<'a> {
 #[inline(always)]
 pub fn try_next_enumerated_account_info<'a, I>(
     iter: &mut I,
-    constraints: EnumeratedAccountConstraints,
+    constraints: AccountInfoConstraints,
 ) -> Result<I::Item, ProgramError>
 where
     I: Iterator<Item = (usize, &'a NoStdAccountInfo)>,
@@ -179,7 +178,7 @@ where
 /// use sealevel_tools::{
 ///     account_info::{
 ///         try_next_enumerated_account_info, try_next_enumerated_optional_account_info,
-///         EnumeratedAccountConstraints,
+///         AccountInfoConstraints,
 ///     },
 ///     entrypoint::{NoStdAccountInfo, ProgramResult},
 ///     pubkey::Pubkey,
@@ -196,7 +195,7 @@ where
 ///     let (index, account) = try_next_enumerated_optional_account_info(
 ///         &mut accounts_iter,
 ///         &program_id,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&solana_program::sysvar::clock::ID),
 ///             ..Default::default()
 ///         })?;
@@ -209,7 +208,7 @@ where
 ///     // Next account must be writable.
 ///     let (index, account) = try_next_enumerated_account_info(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             is_writable: Some(true),
 ///             ..Default::default()
 ///         })?;
@@ -221,7 +220,7 @@ where
 pub fn try_next_enumerated_optional_account_info<'a, I>(
     iter: &mut I,
     none_pubkey: &Pubkey,
-    constraints: EnumeratedAccountConstraints,
+    constraints: AccountInfoConstraints,
 ) -> Result<(usize, Option<&'a NoStdAccountInfo>), ProgramError>
 where
     I: Iterator<Item = (usize, &'a NoStdAccountInfo)>,
@@ -248,7 +247,7 @@ where
 fn _process_enumerated_account_info(
     index: usize,
     account: &NoStdAccountInfo,
-    EnumeratedAccountConstraints {
+    AccountInfoConstraints {
         key,
         any_of_keys,
         owner,
@@ -263,7 +262,7 @@ fn _process_enumerated_account_info(
         match_data_slice,
         min_lamports,
         max_lamports,
-    }: EnumeratedAccountConstraints,
+    }: AccountInfoConstraints,
 ) -> Result<(), ProgramError> {
     if let Some(key) = key {
         if account.key() != key {

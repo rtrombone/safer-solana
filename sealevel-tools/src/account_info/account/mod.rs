@@ -25,10 +25,11 @@ use crate::{
     pubkey::Pubkey,
 };
 
-use super::{try_close_account, try_next_enumerated_account_info, EnumeratedAccountConstraints};
+use super::{try_close_account, try_next_enumerated_account_info, AccountInfoConstraints};
 
 /// Generic wrapper for a data account that can be read from or written to (specified by `WRITE`
 /// const parameter).
+#[derive(Clone, PartialEq, Eq)]
 pub struct Account<'a, const WRITE: bool>(pub(crate) &'a NoStdAccountInfo);
 
 /// Wrapper for a read-only account.
@@ -39,10 +40,7 @@ pub type WritableAccount<'a> = Account<'a, true>;
 
 impl<'a> Account<'a, true> {
     pub fn try_close(&self, beneficiary: &Account<'a, true>) -> ProgramResult {
-        try_close_account(super::CloseAccount {
-            account: self.0,
-            beneficiary: beneficiary.0,
-        })
+        try_close_account(self.0, beneficiary.0)
     }
 }
 
@@ -89,6 +87,7 @@ impl<'b, const WRITE: bool> Account<'b, WRITE> {
 }
 
 /// Generic wrapper for a program (executable) account.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Program<'a>(pub(crate) &'a NoStdAccountInfo);
 
 impl<'a> TryFrom<&'a NoStdAccountInfo> for Program<'a> {
@@ -116,6 +115,7 @@ impl<'a> Deref for Program<'a> {
 
 /// Generic wrapper for a signer account that can be read from or written to (specified by `WRITE`
 /// const parameter).
+#[derive(Clone, PartialEq, Eq)]
 pub struct Signer<'a, const WRITE: bool>(pub(crate) &'a NoStdAccountInfo);
 
 /// Wrapper for a read-only signer account.
@@ -165,6 +165,7 @@ impl<'b, const WRITE: bool> Signer<'b, WRITE> {
 }
 
 /// Wrapper for [Account] that deserializes data with [AccountSerde].
+#[derive(Clone, PartialEq, Eq)]
 pub struct DataAccount<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> {
     pub(crate) account: Account<'a, WRITE>,
     pub data: T,
@@ -226,7 +227,7 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> De
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, EnumeratedAccountConstraints, Payer, Program,
+///         try_next_enumerated_account, AccountInfoConstraints, Payer, Program,
 ///         ReadonlyAccount,
 ///     },
 ///     entrypoint::{NoStdAccountInfo, ProgramResult},
@@ -253,7 +254,7 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> De
 ///     // Next account must be System program.
 ///     let (index, system_program) = try_next_enumerated_account::<Program>(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&solana_program::system_program::ID),
 ///             ..Default::default()
 ///         })?;
@@ -264,7 +265,7 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> De
 #[inline(always)]
 pub fn try_next_enumerated_account<'a, T: TryFrom<&'a NoStdAccountInfo>>(
     iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
-    constraints: EnumeratedAccountConstraints,
+    constraints: AccountInfoConstraints,
 ) -> Result<(usize, T), ProgramError>
 where
     ProgramError: From<<T as TryFrom<&'a NoStdAccountInfo>>::Error>,
@@ -286,7 +287,7 @@ where
 /// use sealevel_tools::{
 ///     account_info::{
 ///         try_next_enumerated_account, try_next_enumerated_optional_account,
-///         EnumeratedAccountConstraints, Payer, Program, ReadonlyAccount,
+///         AccountInfoConstraints, Payer, Program, ReadonlyAccount,
 ///     },
 ///     entrypoint::{NoStdAccountInfo, ProgramResult},
 ///     pubkey::Pubkey,
@@ -317,7 +318,7 @@ where
 ///     // Next account must be System program.
 ///     let (index, system_program) = try_next_enumerated_account::<Program>(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&solana_program::system_program::ID),
 ///             ..Default::default()
 ///         })?;
@@ -329,7 +330,7 @@ where
 pub fn try_next_enumerated_optional_account<'a, T: TryFrom<&'a NoStdAccountInfo>>(
     iter: &mut impl Iterator<Item = (usize, &'a NoStdAccountInfo)>,
     none_pubkey: &Pubkey,
-    constraints: EnumeratedAccountConstraints,
+    constraints: AccountInfoConstraints,
 ) -> Result<(usize, Option<T>), ProgramError>
 where
     ProgramError: From<<T as TryFrom<&'a NoStdAccountInfo>>::Error>,

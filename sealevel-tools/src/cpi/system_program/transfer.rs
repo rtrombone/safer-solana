@@ -5,6 +5,7 @@ use crate::{
 
 /// Arguments for the transfer instruction on the System program, which moves lamports between two
 /// accounts.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Transfer<'a, 'b: 'a> {
     pub from: CpiAuthority<'a, 'b>,
     pub to: &'b NoStdAccountInfo,

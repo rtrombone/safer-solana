@@ -6,6 +6,7 @@ use crate::{
 
 /// Arguments for the thaw account instruction on the specified Token program, which unfreezes a
 /// token account. Only the mint's freeze authority can invoke this instruction.
+#[derive(Clone, PartialEq, Eq)]
 pub struct ThawAccount<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub account: &'b NoStdAccountInfo,

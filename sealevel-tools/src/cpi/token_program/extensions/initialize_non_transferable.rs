@@ -4,6 +4,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// which only allows minting to token accounts with immutable owners (these tokens cannot be
 /// transferred between token accounts). This instruction must be called before a mint is
 /// initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeNonTransferable<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

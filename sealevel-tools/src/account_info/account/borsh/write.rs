@@ -7,6 +7,7 @@ use crate::{
 /// Struct that implements [Write] for use with writable [Account].
 ///
 /// Inspired by <https://github.com/coral-xyz/anchor/blob/v0.30.1/lang/src/bpf_writer.rs>.
+#[derive(Clone, PartialEq, Eq)]
 pub struct BorshAccountWriter<'a, 'b: 'a> {
     account: &'a Account<'b, true>,
     position: usize,

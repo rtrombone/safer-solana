@@ -7,6 +7,7 @@ use crate::{entrypoint::NoStdAccountInfo, error::SealevelToolsError};
 use super::{Account, Program};
 
 /// Wrapper for [Program] for the System program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct SystemProgram<'a>(pub(crate) Program<'a>);
 
 impl<'a> TryFrom<&'a NoStdAccountInfo> for SystemProgram<'a> {
@@ -33,6 +34,7 @@ impl<'a> Deref for SystemProgram<'a> {
 }
 
 /// Account must be owned by the System program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct SystemAccount<'a, const WRITE: bool>(pub(crate) Account<'a, WRITE>);
 
 /// Read-only account for the System program.

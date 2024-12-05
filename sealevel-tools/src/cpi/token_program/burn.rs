@@ -7,6 +7,7 @@ use crate::{
 /// Arguments for the burn instruction on the specified Token program, which burns a specified
 /// amount from a token account. Only the token account's owner or delegated authority can invoke
 /// this instruction.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Burn<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub source: &'b NoStdAccountInfo,

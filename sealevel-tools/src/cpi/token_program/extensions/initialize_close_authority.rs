@@ -5,6 +5,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// Arguments for the initialize close authority instruction on the specified Token program, which
 /// initializes the close authority of a mint. This instruction must be called before a mint is
 /// initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeMintCloseAuthority<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

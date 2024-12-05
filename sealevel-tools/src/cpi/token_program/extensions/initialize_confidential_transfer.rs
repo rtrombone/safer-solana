@@ -5,6 +5,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// Arguments for the initialize confidential transfer instruction on the specified Token program,
 /// which establishes an authority and ElGamal pubkey for confidential transfers. This instruction
 /// must be called before a mint is initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeConfidentialTransfer<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

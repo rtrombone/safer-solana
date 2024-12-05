@@ -33,7 +33,7 @@ pub const MAX_ADDITIONAL_ACCOUNTS_NOALLOC: usize = 12;
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, Authority, EnumeratedAccountConstraints,
+///         try_next_enumerated_account, Authority, AccountInfoConstraints,
 ///         WritableTokenProgramAccount, WritableAccount,
 ///     },
 ///     cpi::token_program as token_program_cpi,
@@ -85,7 +85,7 @@ pub const MAX_ADDITIONAL_ACCOUNTS_NOALLOC: usize = 12;
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, Authority, EnumeratedAccountConstraints, ReadonlyAccount,
+///         try_next_enumerated_account, Authority, AccountInfoConstraints, ReadonlyAccount,
 ///         WritableTokenProgramAccount, WritableAccount,
 ///     },
 ///     cpi::token_program as token_program_cpi,
@@ -146,6 +146,7 @@ pub const MAX_ADDITIONAL_ACCOUNTS_NOALLOC: usize = 12;
 ///     Ok(())
 /// }
 /// ```
+#[derive(Clone, PartialEq, Eq)]
 pub struct Transfer<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub source: &'b NoStdAccountInfo,
@@ -162,6 +163,7 @@ pub struct Transfer<'a, 'b: 'a> {
 
 /// Optional arguments for [Transfer], which enables the transfer checked instruction instead of the
 /// deprecated transfer instruction.
+#[derive(Clone, PartialEq, Eq)]
 pub struct UseTransferChecked<'a> {
     pub mint: &'a NoStdAccountInfo,
     pub decimals: u8,
@@ -215,6 +217,7 @@ impl<'a, 'b: 'a> Transfer<'a, 'b> {
 ///
 /// If the "alloc" feature is disabled, this method will error out if the number of additional
 /// accounts exceeds [MAX_ADDITIONAL_ACCOUNTS_NOALLOC]. Otherwise this method should be infallible.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TransferChecked<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub source: &'b NoStdAccountInfo,

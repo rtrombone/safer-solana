@@ -100,7 +100,8 @@ pub trait DeriveAddress {
     fn create_program_address(seeds: Self::Seeds<'_>, bump_seed: u8) -> Option<Pubkey>;
 }
 
-/// Trait to convert an integer to a seed consistently to big-endian bytes.
+/// Trait to convert an integer to a seed consistently to big-endian bytes. The reason big-endian is
+/// chosen is due to the hex representation of integers: `0x100` equals `256`, not `1`.
 pub trait ToSeed {
     type Bytes;
 
@@ -122,3 +123,16 @@ macro_rules! impl_to_seed {
 }
 
 impl_to_seed!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_to_seed() {
+        let x = 0x00000400_u32;
+        assert_eq!(x, 1_024);
+        assert_eq!(x.to_seed(), x.to_be_bytes());
+        assert_eq!(x.to_seed(), [0, 0, 4, 0]);
+    }
+}

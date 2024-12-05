@@ -7,6 +7,7 @@ use crate::{
 /// Arguments for the approve instruction on the specified Token program, which allows a delegated
 /// authority to move a specified amount from a token account. Only the token account's owner can
 /// approve an amount to a delegated authority.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Approve<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub source: &'b NoStdAccountInfo,

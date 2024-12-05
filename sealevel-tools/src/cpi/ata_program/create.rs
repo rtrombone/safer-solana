@@ -6,6 +6,7 @@ use crate::{
 
 /// Arguments for the create instruction on an Associated Token Account program, which creates a
 /// token account with an address seeded by its owner and mint.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Create<'a, 'b: 'a> {
     pub associated_token_account_program_id: &'a Pubkey,
     pub payer: CpiAuthority<'a, 'b>,

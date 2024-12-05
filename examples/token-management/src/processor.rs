@@ -1,7 +1,7 @@
 use sealevel_tools::{
     account_info::{
-        try_next_enumerated_account, Authority, EnumeratedAccountConstraints, Payer,
-        ReadonlyAccount, SystemProgram, TokenProgram, WritableAccount, WritableTokenProgramAccount,
+        try_next_enumerated_account, AccountInfoConstraints, Authority, Payer, ReadonlyAccount,
+        SystemProgram, TokenProgram, WritableAccount, WritableTokenProgramAccount,
     },
     cpi::{
         set_return_data,
@@ -102,7 +102,7 @@ pub fn init_mint_with_extensions(
     // Third account is the new mint.
     let (_, new_mint_account) = try_next_enumerated_account::<WritableAccount>(
         &mut accounts_iter,
-        EnumeratedAccountConstraints {
+        AccountInfoConstraints {
             key: Some(&new_mint_addr),
             ..Default::default()
         },
@@ -221,7 +221,7 @@ pub fn init_token_account(
     // Second account is the mint.
     let (_, mint_account) = try_next_enumerated_account::<ReadonlyAccount>(
         &mut accounts_iter,
-        EnumeratedAccountConstraints {
+        AccountInfoConstraints {
             key: Some(&state::find_mint_address().0),
             ..Default::default()
         },
@@ -233,7 +233,7 @@ pub fn init_token_account(
     // Third account is the new token account.
     let (_, new_token_account) = try_next_enumerated_account::<WritableAccount>(
         &mut accounts_iter,
-        EnumeratedAccountConstraints {
+        AccountInfoConstraints {
             key: Some(&new_token_account_addr),
             ..Default::default()
         },
@@ -289,7 +289,7 @@ pub fn mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
 
     let (_, mint_authority) = try_next_enumerated_account::<ReadonlyAccount>(
         &mut accounts_iter,
-        EnumeratedAccountConstraints {
+        AccountInfoConstraints {
             key: Some(&mint_authority_addr),
             ..Default::default()
         },
@@ -342,7 +342,7 @@ pub fn suboptimal_mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> Program
 
     let (_, mint_authority) = try_next_enumerated_account::<ReadonlyAccount>(
         &mut accounts_iter,
-        EnumeratedAccountConstraints {
+        AccountInfoConstraints {
             key: Some(&mint_authority_addr),
             ..Default::default()
         },

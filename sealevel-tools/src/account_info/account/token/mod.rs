@@ -26,6 +26,7 @@ type StateWithExtensionsBaseAccount<'a, const WRITE: bool, T> =
     DataAccount<'a, WRITE, 0, StateWithExtensionsBaseSchema<T>>;
 
 /// Wrapper for [Program] for either SPL Token or SPL Token Extensions program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TokenProgram<'a>(pub(crate) Program<'a>);
 
 impl<'a> TryFrom<&'a NoStdAccountInfo> for TokenProgram<'a> {
@@ -52,6 +53,7 @@ impl<'a> Deref for TokenProgram<'a> {
 }
 
 /// Account must be owned by either the SPL Token or SPL Token Extensions program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TokenProgramAccount<'a, const WRITE: bool>(pub(crate) Account<'a, WRITE>);
 
 /// Read-only account for either SPL Token or SPL Token Extensions program.
@@ -94,6 +96,7 @@ impl<'a, const WRITE: bool> Deref for TokenProgramAccount<'a, WRITE> {
 ///
 /// [PodStateWithExtensions]: spl_token_2022::extension::PodStateWithExtensions
 /// [StateWithExtensions]: spl_token_2022::extension::StateWithExtensions
+#[derive(Clone, PartialEq, Eq)]
 pub struct TokenProgramDataAccount<'a, const WRITE: bool, T: BaseState + Pack>(
     pub(crate) StateWithExtensionsBaseAccount<'a, WRITE, T>,
 );
@@ -214,6 +217,7 @@ impl<'a, const WRITE: bool, T: BaseState + Pack> Deref for TokenProgramDataAccou
 }
 
 /// Wrapper for [Program] for the SPL Token program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct LegacyTokenProgram<'a>(pub(crate) Program<'a>);
 
 impl<'a> TryFrom<&'a NoStdAccountInfo> for LegacyTokenProgram<'a> {
@@ -240,6 +244,7 @@ impl<'a> Deref for LegacyTokenProgram<'a> {
 }
 
 /// Account must be owned by the SPL Token program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct LegacyTokenProgramAccount<'a, const WRITE: bool>(pub(crate) Account<'a, WRITE>);
 
 /// Read-only account for the SPL Token program.
@@ -272,6 +277,7 @@ impl<'a, const WRITE: bool> Deref for LegacyTokenProgramAccount<'a, WRITE> {
 }
 
 /// Wrapper for [DataAccount] that deserializes data with [Pack] for the SPL Token program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct LegacyTokenProgramDataAccount<'a, const WRITE: bool, T: Pack + IsInitialized>(
     pub(crate) PackAccount<'a, WRITE, T>,
 );
@@ -335,6 +341,7 @@ impl<'a, const WRITE: bool, T: Pack + IsInitialized> Deref
 }
 
 /// Wrapper for [Program] for the SPL Token Extensions program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TokenExtensionsProgram<'a>(pub(crate) Program<'a>);
 
 impl<'a> TryFrom<&'a NoStdAccountInfo> for TokenExtensionsProgram<'a> {
@@ -361,6 +368,7 @@ impl<'a> Deref for TokenExtensionsProgram<'a> {
 }
 
 /// Account must be owned by the SPL Token Extensions program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TokenExtensionsProgramAccount<'a, const WRITE: bool>(pub(crate) Account<'a, WRITE>);
 
 /// Read-only account for the SPL Token Extensions program.
@@ -405,6 +413,7 @@ impl<'a, const WRITE: bool> Deref for TokenExtensionsProgramAccount<'a, WRITE> {
 ///
 /// [PodStateWithExtensions]: spl_token_2022::extension::PodStateWithExtensions
 /// [StateWithExtensions]: spl_token_2022::extension::StateWithExtensions
+#[derive(Clone, PartialEq, Eq)]
 pub struct TokenExtensionsProgramDataAccount<'a, const WRITE: bool, T: BaseState + Pack>(
     pub(crate) StateWithExtensionsBaseAccount<'a, WRITE, T>,
 );

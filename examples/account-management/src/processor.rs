@@ -1,7 +1,7 @@
 use sealevel_tools::{
     account::BorshAccountSchema,
     account_info::{
-        try_next_enumerated_account, EnumeratedAccountConstraints, MatchDataSlice, Payer,
+        try_next_enumerated_account, AccountInfoConstraints, MatchDataSlice, Payer,
         WritableAccount, WritableSystemAccount,
     },
     cpi::system_program::CreateAccount,
@@ -29,7 +29,7 @@ pub fn init_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
     // Second account is the new Thing.
     let (_, new_thing_account) = try_next_enumerated_account::<WritableSystemAccount>(
         &mut accounts_iter,
-        EnumeratedAccountConstraints {
+        AccountInfoConstraints {
             key: Some(&new_thing_addr),
             ..Default::default()
         },
@@ -86,7 +86,7 @@ pub fn close_thing(accounts: &[NoStdAccountInfo]) -> ProgramResult {
     // that this account is owned by this program because the close will fail if it isn't.
     let (_, thing_account) = try_next_enumerated_account::<WritableAccount>(
         &mut accounts_iter,
-        EnumeratedAccountConstraints {
+        AccountInfoConstraints {
             match_data_slice: Some(MatchDataSlice {
                 offset: 0,
                 data: &Thing::DISCRIMINATOR,

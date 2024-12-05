@@ -7,6 +7,7 @@ use crate::{
 /// Arguments for the sync native instruction on the specified Token program, which synchronizes the
 /// amount (balance) on the token account with the number of excess lamports on the token account.
 /// Performing this call is effectively "wrapping" SOL as the mint representation of SOL.
+#[derive(Clone, PartialEq, Eq)]
 pub struct SyncNative<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub source: &'b NoStdAccountInfo,

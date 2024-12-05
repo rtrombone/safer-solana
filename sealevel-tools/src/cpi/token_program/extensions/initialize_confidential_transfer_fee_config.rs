@@ -5,6 +5,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// Arguments for the initialize confidential transfer fee config instruction on the specified Token
 /// program, which establishes a fee authority and ElGamal pubkey for confidential transfer fees.
 /// This instruction must be called before a mint is initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeConfidentialTransferFeeConfig<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

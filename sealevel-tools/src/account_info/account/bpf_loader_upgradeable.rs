@@ -12,6 +12,7 @@ use super::{Account, Program};
 const SIZE_OF_PROGRAMDATA_METADATA: usize = UpgradeableLoaderState::size_of_programdata_metadata();
 
 /// Representing the BPF loader Upgradeable program.
+#[derive(Clone, PartialEq, Eq)]
 pub struct BpfLoaderUpgradeableProgram<'a>(pub(crate) Program<'a>);
 
 impl<'a> TryFrom<&'a NoStdAccountInfo> for BpfLoaderUpgradeableProgram<'a> {
@@ -38,6 +39,7 @@ impl<'a> Deref for BpfLoaderUpgradeableProgram<'a> {
 }
 
 /// Account representing a program's program data (owned by the BPF Loader Upgradeable program).
+#[derive(Clone, PartialEq, Eq)]
 pub struct UpgradeableProgramData<'a, const WRITE: bool> {
     pub(crate) account: Account<'a, WRITE>,
     pub data: (

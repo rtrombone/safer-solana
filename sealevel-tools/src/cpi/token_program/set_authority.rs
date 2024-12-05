@@ -11,6 +11,7 @@ use super::AuthorityType;
 /// Arguments for the set authority instruction on the specified Token program, which sets a new
 /// authority for either mint or token account (depending on the [AuthorityType]). Only the current
 /// authority of the given account can invoke this instruction.
+#[derive(Clone, PartialEq)]
 pub struct SetAuthority<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub account: &'b NoStdAccountInfo,

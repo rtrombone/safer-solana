@@ -8,6 +8,7 @@ use crate::{
 /// the mint close authority extension exists). For token accounts, only the token account's owner
 /// can invoke this instruction. For mint accounts with the mint close authority extension, only
 /// the mint's close authority can invoke this instruction.
+#[derive(Clone, PartialEq, Eq)]
 pub struct CloseAccount<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub account: &'b NoStdAccountInfo,

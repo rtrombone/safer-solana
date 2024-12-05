@@ -12,7 +12,7 @@ use crate::{
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, EnumeratedAccountConstraints, ReadonlyAccount,
+///         try_next_enumerated_account, AccountInfoConstraints, ReadonlyAccount,
 ///         WritableTokenProgramAccount, WritableAccount,
 ///     },
 ///     cpi::token_program as token_program_cpi,
@@ -51,7 +51,7 @@ use crate::{
 ///
 ///     let (_, mint_authority) = try_next_enumerated_account::<ReadonlyAccount>(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&mint_authority_addr),
 ///             ..Default::default()
 ///         },
@@ -70,6 +70,7 @@ use crate::{
 ///     Ok(())
 /// }
 /// ```
+#[derive(Clone, PartialEq, Eq)]
 pub struct MintTo<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'b NoStdAccountInfo,

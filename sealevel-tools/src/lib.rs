@@ -257,7 +257,7 @@
 //! ```
 //! # use sealevel_tools::{
 //! #   account_info::{
-//! #       try_next_enumerated_account, EnumeratedAccountConstraints, Payer, WritableAccount
+//! #       try_next_enumerated_account, AccountInfoConstraints, Payer, WritableAccount
 //! #   },
 //! #   entrypoint::{NoStdAccountInfo, ProgramResult},
 //! #   pubkey::Pubkey,
@@ -278,7 +278,7 @@
 //!     // Second account is the new Thing.
 //!     let (_, new_thing_account) = try_next_enumerated_account::<WritableAccount>(
 //!         &mut accounts_iter,
-//!         EnumeratedAccountConstraints {
+//!         AccountInfoConstraints {
 //!             key: Some(&new_thing_addr),
 //!             ..Default::default()
 //!         },
@@ -290,7 +290,7 @@
 //!
 //! [try_next_enumerated_account] takes an enumerated iterator and
 //! returns tools-defined types, which are simple wrappers around [NoStdAccountInfo] (e.g.
-//! [Payer], which is a writable [Signer]. [EnumeratedAccountConstraints] provide some optional
+//! [Payer], which is a writable [Signer]. [AccountInfoConstraints] provide some optional
 //! constraints when plucking off the next account (e.g. verifying that the pubkey equals what you
 //! expect). In the above example, we are asserting that the new `Thing` account is a
 //! [WritableAccount], whose const bool value says that it is a writable account.
@@ -301,7 +301,7 @@
 //! ```
 //! # use sealevel_tools::{
 //! #   account_info::{
-//! #       try_next_enumerated_account, EnumeratedAccountConstraints, Payer, TakeAccounts,
+//! #       try_next_enumerated_account, AccountInfoConstraints, Payer, TakeAccounts,
 //! #       WritableAccount
 //! #   },
 //! #   entrypoint::NoStdAccountInfo,
@@ -331,7 +331,7 @@
 //!
 //!         let (new_thing_index, new_thing_account) = try_next_enumerated_account(
 //!             iter,
-//!             EnumeratedAccountConstraints {
+//!             AccountInfoConstraints {
 //!                 key: Some(&new_thing_addr),
 //!                 ..Default::default()
 //!             },
@@ -351,7 +351,7 @@
 //! SDKs leverage. But when writing a program with these tools, the next best option is giving the
 //! index of the accounts array you passed into your transaction. [try_next_enumerated_account] has
 //! error handling that gives the user information about which account index failed any checks using
-//! the [EnumeratedAccountConstraints].
+//! the [AccountInfoConstraints].
 //!
 //! Also notice that we do not check that the System program is provided. You can add an explicit
 //! check for it (like how [anchor-lang] requires it). Or it can be assumed that it is one of the
@@ -364,7 +364,7 @@
 //! # use sealevel_tools::{
 //! #    account::{AccountSerde, BorshAccountSchema},
 //! #    account_info::{
-//! #       try_next_enumerated_account, EnumeratedAccountConstraints, Payer, WritableAccount
+//! #       try_next_enumerated_account, AccountInfoConstraints, Payer, WritableAccount
 //! #    },
 //! #    cpi::system_program::CreateAccount,
 //! #    discriminator::{Discriminate, Discriminator},
@@ -394,7 +394,7 @@
 //! #
 //! #     let (_, new_thing_account) = try_next_enumerated_account::<WritableAccount>(
 //! #         &mut accounts_iter,
-//! #         EnumeratedAccountConstraints {
+//! #         AccountInfoConstraints {
 //! #             key: Some(&new_thing_addr),
 //! #             ..Default::default()
 //! #         },
@@ -436,7 +436,7 @@
 //! [AccountInfo]: https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html
 //! [Accounts]: https://docs.rs/anchor-lang/latest/anchor_lang/trait.Accounts.html
 //! [Discriminator]: crate::discriminator::Discriminator
-//! [EnumeratedAccountConstraints]: crate::account_info::EnumeratedAccountConstraints
+//! [AccountInfoConstraints]: crate::account_info::AccountInfoConstraints
 //! [NoStdAccountInfo]: crate::entrypoint::NoStdAccountInfo
 //! [Payer]: crate::account_info::Payer
 //! [README]: https://crates.io/crates/sealevel-tools

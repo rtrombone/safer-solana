@@ -5,6 +5,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// Arguments for the initialize permanent delegate instruction on the specified Token program,
 /// which allows this authority for the specified mint to move tokens between any token accounts.
 /// This instruction must be called before a mint is initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializePermanentDelegate<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

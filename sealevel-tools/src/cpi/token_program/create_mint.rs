@@ -21,7 +21,7 @@ use super::EMPTY_EXTENSION_LEN;
 /// use sealevel_tools::{
 ///     account_info::{
 ///         try_next_enumerated_account, try_next_enumerated_account_info, TokenProgram,
-///         EnumeratedAccountConstraints, Account, Signer,
+///         AccountInfoConstraints, Account, Signer,
 ///     },
 ///     cpi::token_program::{CreateMint, InitializeMetadataPointerData, InitializeMintExtensions},
 ///     entrypoint::{NoStdAccountInfo, ProgramResult},
@@ -45,7 +45,7 @@ use super::EMPTY_EXTENSION_LEN;
 ///     // Next account must be writable data account matching PDA address.
 ///     let (_, new_mint_account) = try_next_enumerated_account::<Account<true>>(
 ///         &mut accounts_iter,
-///         EnumeratedAccountConstraints {
+///         AccountInfoConstraints {
 ///             key: Some(&new_mint_addr),
 ///             ..Default::default()
 ///         },
@@ -80,6 +80,7 @@ use super::EMPTY_EXTENSION_LEN;
 ///     Ok(())
 /// }
 /// ```
+#[derive(Clone, PartialEq, Eq)]
 pub struct CreateMint<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub payer: CpiAuthority<'a, 'b>,
@@ -92,7 +93,7 @@ pub struct CreateMint<'a, 'b: 'a> {
 
 /// Optional extensions for mint accounts. These extensions are used to add additional features to
 /// mint accounts.
-#[derive(Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct InitializeMintExtensions<'a> {
     pub close_authority: Option<&'a Pubkey>,
     pub group_pointer: Option<InitializeGroupPointerData<'a>>,
@@ -115,6 +116,7 @@ pub struct InitializeMintExtensions<'a> {
 }
 /// Data required to initialize the group pointer extension, which is used to establish a collection
 /// of mints.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitializeGroupPointerData<'a> {
     /// Who has authority to update the group pointer. If [None], the group cannot be modified.
     pub authority: Option<&'a Pubkey>,
@@ -132,6 +134,7 @@ pub struct InitializeGroupPointerData<'a> {
 
 /// Data required to initialize the group member pointer extension, which is used to associate a
 /// mint with a group (via group pointer extension).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitializeGroupMemberPointerData<'a> {
     /// Who has authority to update the group member pointer. If [None], the group member cannot be
     /// modified.
@@ -154,6 +157,7 @@ pub struct InitializeGroupMemberPointerData<'a> {
 
 /// Data required to initialize the metadata pointer extension, which is used to add descriptive
 /// information to a mint.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitializeMetadataPointerData<'a> {
     /// Who has authority to update the metadata pointer. If [None], the metadata cannot be
     /// modified.
@@ -176,6 +180,7 @@ pub struct InitializeMetadataPointerData<'a> {
 
 /// Data required to initialize the transfer fee extension, which is used to charge a fee for
 /// transferring tokens.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitializeTransferFeeConfigData<'a> {
     /// Who has authority to update the configuration parameters. If [None], the config cannot be
     /// modified.
@@ -198,6 +203,7 @@ pub struct InitializeTransferFeeConfigData<'a> {
 
 /// Data required to initialize the transfer hook extension, which is used to execute custom logic
 /// when transferring tokens.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitializeTransferHookData<'a> {
     /// Who has authority to update the program ID. If [None], the program ID cannot be modified.
     ///
@@ -219,6 +225,7 @@ pub struct InitializeTransferHookData<'a> {
 
 /// Data required to initialize the confidential transfer extension, which is used to hide the
 /// transfer amount.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitializeConfidentialTransferData<'a> {
     /// Authority to modify the confidential transfer configuration parameters and to approve new
     /// accounts.
@@ -238,6 +245,7 @@ pub struct InitializeConfidentialTransferData<'a> {
 
 /// Data required to initialize the confidential transfer fee extension, which is used to hide the
 /// transfer fee amount.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitializeConfidentialTransferFeeConfigData<'a> {
     /// Optional authority to set the withdraw withheld authority ElGamal key. If [None], the
     /// withdraw withheld authority ElGamal key cannot be modified.
@@ -589,6 +597,7 @@ impl<'a, 'b: 'a> CreateMint<'a, 'b> {
 ///
 /// It is preferred to use [CreateMint] instead of initializing a mint by itself because the other
 /// method will create the account and initialize it as a mint in one action.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeMint<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,

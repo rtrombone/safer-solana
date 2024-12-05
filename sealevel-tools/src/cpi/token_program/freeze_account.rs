@@ -6,6 +6,7 @@ use crate::{
 
 /// Arguments for the freeze account instruction on the specified Token program, which prevents a
 /// token account from moving tokens. Only the mint's freeze authority can invoke this instruction.
+#[derive(Clone, PartialEq, Eq)]
 pub struct FreezeAccount<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub account: &'b NoStdAccountInfo,

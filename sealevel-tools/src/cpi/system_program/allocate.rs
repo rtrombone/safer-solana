@@ -2,6 +2,7 @@ use crate::cpi::{CpiAuthority, CpiInstruction};
 
 /// Arguments for the allocate instruction on the System program, which resizes a System-owned
 /// account.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Allocate<'a, 'b: 'a> {
     pub account: CpiAuthority<'a, 'b>,
     pub space: u64,

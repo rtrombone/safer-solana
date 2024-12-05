@@ -6,6 +6,7 @@ use crate::{
 
 /// Arguments for the revoke instruction on the specified Token program, which revokes the delegated
 /// amount on a token account. Only the token account's owner can invoke this instruction.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Revoke<'a, 'b: 'a> {
     pub token_program_id: &'a Pubkey,
     pub source: &'b NoStdAccountInfo,

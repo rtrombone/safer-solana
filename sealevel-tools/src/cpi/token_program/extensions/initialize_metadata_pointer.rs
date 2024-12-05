@@ -3,6 +3,7 @@ use crate::{cpi::CpiInstruction, entrypoint::NoStdAccountInfo, pubkey::Pubkey};
 /// Arguments for the initialize metadata pointer instruction on the specified Token program, which
 /// is used to establish a metadata account for a mint. This instruction must be called before a
 /// mint is initialized.
+#[derive(Clone, PartialEq, Eq)]
 pub struct InitializeMetadataPointer<'a> {
     pub token_program_id: &'a Pubkey,
     pub mint: &'a NoStdAccountInfo,
