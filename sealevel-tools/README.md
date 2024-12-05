@@ -43,7 +43,7 @@ To disable these defaults (e.g. using a heapless environment via
 [noalloc_allocator]), use `default-features = false` in your Cargo.toml and add
 the features you need for your program:
 ```toml
-sealevel-tools = { version = "0.5", default-features = false, features = ["noalloc-default"] }
+sealevel-tools = { version = "0.6", default-features = false, features = ["noalloc-default"] }
 ```
 
 ### `features = ["alloc"]`
