@@ -3,7 +3,7 @@ use example_token_management::{
     state, ID,
 };
 use examples_common::{is_compute_units_within, is_program_failure, TestResult, TestSuccess};
-use sealevel_tools::account::legacy_token;
+use sealevel_tools::account::{legacy_token, token_extensions, AssociatedTokenAccountSeeds};
 use solana_program_test::{tokio, BanksClient, ProgramTest};
 use solana_sdk::{
     hash::Hash,
@@ -73,6 +73,45 @@ async fn test_init_token_account_token_program() {
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
         8050,
+        CU_TOLERANCE
+    ));
+}
+
+#[tokio::test]
+async fn test_init_ata_token_program() {
+    let owner = DEFAULT_OWNER;
+
+    let TestSuccess { tx_meta, .. } = InitAtaTest::set_up(
+        legacy_token::ID,
+        owner,
+        false, // idempotent
+        None,  // mint_extensions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        24_500,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitAtaTest::set_up(
+        legacy_token::ID,
+        owner,
+        true, // idempotent
+        None, // mint_extensions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        24_500,
         CU_TOLERANCE
     ));
 }
@@ -552,7 +591,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        31_300,
+        31_250,
         CU_TOLERANCE
     ));
 }
@@ -580,6 +619,45 @@ async fn test_init_token_account_token_2022_program() {
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
         5_250,
+        CU_TOLERANCE
+    ));
+}
+
+#[tokio::test]
+async fn test_init_ata_token_2022_program() {
+    let owner = DEFAULT_OWNER;
+
+    let TestSuccess { tx_meta, .. } = InitAtaTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        false, // idempotent
+        None,  // mint_extentions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        17_850,
+        CU_TOLERANCE
+    ));
+
+    let TestSuccess { tx_meta, .. } = InitAtaTest::set_up(
+        spl_token_2022::ID,
+        owner,
+        true, // idempotent
+        None, // mint_extentions
+    )
+    .await
+    .run()
+    .await
+    .success()
+    .unwrap();
+    assert!(is_compute_units_within(
+        tx_meta.compute_units_consumed,
+        17_850,
         CU_TOLERANCE
     ));
 }
@@ -1449,6 +1527,187 @@ impl InitTokenAccountTest {
             assert!(non_transferable_account.is_ok());
             assert!(immutable_owner_result.is_ok());
         } else if immutable_owner {
+            assert!(non_transferable_account.is_err());
+            assert!(immutable_owner_result.is_ok());
+        } else {
+            assert!(non_transferable_account.is_err());
+            assert!(immutable_owner_result.is_err());
+        }
+
+        let transfer_hook_account = token_account_data
+            .get_extension::<spl_token_2022::extension::transfer_hook::TransferHookAccount>(
+        );
+        if transfer_hook {
+            assert!(transfer_hook_account.is_ok());
+        } else {
+            assert!(transfer_hook_account.is_err());
+        }
+
+        TestSuccess {
+            banks_client,
+            payer,
+            recent_blockhash,
+            tx_meta,
+        }
+        .into()
+    }
+}
+
+struct InitAtaTest {
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+    token_program_id: Pubkey,
+    owner: Pubkey,
+    idempotent: bool,
+    mint_extensions: MintExtensionsForTest,
+}
+
+impl InitAtaTest {
+    async fn set_up(
+        token_program_id: Pubkey,
+        owner: Pubkey,
+        idempotent: bool,
+        mint_extensions: Option<MintExtensionsForTest>,
+    ) -> Self {
+        let TestSuccess {
+            banks_client,
+            payer,
+            recent_blockhash,
+            ..
+        } = InitMintTest::set_up(
+            token_program_id,
+            9,    // decimals
+            None, // freeze_authority
+            mint_extensions,
+        )
+        .await
+        .run()
+        .await
+        .success()
+        .unwrap();
+
+        Self {
+            banks_client,
+            payer,
+            recent_blockhash,
+            token_program_id,
+            owner,
+            idempotent,
+            mint_extensions: mint_extensions.unwrap_or_default(),
+        }
+    }
+
+    async fn run(self) -> TestResult {
+        let Self {
+            banks_client,
+            payer,
+            recent_blockhash,
+            token_program_id,
+            owner,
+            idempotent,
+            mint_extensions:
+                MintExtensionsForTest {
+                    transfer_fee,
+                    non_transferable,
+                    transfer_hook,
+                    ..
+                },
+        } = self;
+        dbg!(
+            token_program_id,
+            owner,
+            idempotent,
+            transfer_fee,
+            non_transferable,
+            transfer_hook
+        );
+
+        let (mint_addr, mint_bump) = state::find_mint_address();
+        assert_eq!(mint_bump, 252);
+
+        let (new_ata_addr, ata_bump) = AssociatedTokenAccountSeeds {
+            owner: &owner,
+            token_program_id: &token_program_id,
+            mint: &mint_addr,
+        }
+        .find_program_address(None);
+        if token_program_id == legacy_token::ID {
+            assert_eq!(ata_bump, 254);
+        } else {
+            assert_eq!(ata_bump, 255);
+        }
+
+        let instruction = Instruction {
+            program_id: ID,
+            accounts: vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(new_ata_addr, false),
+                AccountMeta::new_readonly(owner, false),
+                AccountMeta::new_readonly(mint_addr, false),
+                AccountMeta::new_readonly(system_program::ID, false),
+                AccountMeta::new_readonly(token_program_id, false),
+                AccountMeta::new_readonly(sealevel_tools::account::ata::ID, false),
+            ],
+            data: borsh::to_vec(&ProgramInstruction::InitAta(idempotent)).unwrap(),
+        };
+        let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
+        transaction.sign(&[&payer], recent_blockhash);
+
+        let tx_meta = banks_client
+            .process_transaction_with_metadata(transaction)
+            .await
+            .unwrap()
+            .metadata
+            .unwrap();
+
+        if is_program_failure(&ID, &tx_meta.log_messages) {
+            return TestResult::Fail(tx_meta);
+        }
+
+        // Check that token account exists.
+        let token_account = banks_client
+            .get_account(new_ata_addr)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(token_account.owner, token_program_id);
+
+        let token_account_data =
+            StateWithExtensionsOwned::<Account>::unpack(token_account.data).unwrap();
+        assert_eq!(
+            token_account_data.base,
+            Account {
+                mint: mint_addr,
+                owner,
+                amount: 0,
+                delegate: Default::default(),
+                state: spl_token_2022::state::AccountState::Initialized,
+                is_native: Default::default(),
+                delegated_amount: 0,
+                close_authority: Default::default(),
+            }
+        );
+
+        let transfer_fee_amount_result = token_account_data
+            .get_extension::<spl_token_2022::extension::transfer_fee::TransferFeeAmount>(
+        );
+        if transfer_fee {
+            assert!(transfer_fee_amount_result.is_ok());
+        } else {
+            assert!(transfer_fee_amount_result.is_err());
+        };
+
+        let non_transferable_account = token_account_data
+            .get_extension::<spl_token_2022::extension::non_transferable::NonTransferableAccount>(
+        );
+        let immutable_owner_result = token_account_data
+            .get_extension::<spl_token_2022::extension::immutable_owner::ImmutableOwner>(
+        );
+        if non_transferable {
+            assert!(non_transferable_account.is_ok());
+            assert!(immutable_owner_result.is_ok());
+        } else if token_program_id == token_extensions::ID {
             assert!(non_transferable_account.is_err());
             assert!(immutable_owner_result.is_ok());
         } else {

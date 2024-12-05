@@ -36,10 +36,8 @@ pub fn init_ata(accounts: &[NoStdAccountInfo], idempotent: bool) -> ProgramResul
 
     // Fourth account is the mint. Disregard checking the mint PDA (but in a real program, you
     // probably should check). We don't care to deserialize the mint account.
-    let (_, mint_account) = try_next_enumerated_account::<WritableTokenProgramAccount>(
-        &mut accounts_iter,
-        Default::default(),
-    )?;
+    let (_, mint_account) =
+        try_next_enumerated_account::<ReadonlyAccount>(&mut accounts_iter, Default::default())?;
 
     // Fifth account is the System program to create the new account.
     let (_, system_program) =
