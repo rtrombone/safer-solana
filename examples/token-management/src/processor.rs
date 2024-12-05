@@ -52,7 +52,7 @@ pub fn init_ata(accounts: &[NoStdAccountInfo], idempotent: bool) -> ProgramResul
     // solana_program::log::sol_log_compute_units();
 
     sealevel_tools::cpi::ata_program::Create {
-        associated_token_account_program_id: &sealevel_tools::cpi::ata_program::CANONICAL_ID,
+        ata_program_id: None,
         payer: payer.as_cpi_authority(),
         associated_account: &new_ata,
         account_owner: &owner,

@@ -16,7 +16,4 @@ mod create;
 
 pub use create::*;
 
-/// The ID of the canonical Associated Token Account program. If your program does not interact with
-/// a fork of the ATA program, you should use this ID.
-pub const CANONICAL_ID: crate::pubkey::Pubkey =
-    crate::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+crate::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");

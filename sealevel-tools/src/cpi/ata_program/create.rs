@@ -8,7 +8,10 @@ use crate::{
 /// token account with an address seeded by its owner and mint.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Create<'a, 'b: 'a> {
-    pub associated_token_account_program_id: &'a Pubkey,
+    /// If your program interacts with a fork of the official ATA program, provide the ID here.
+    /// Otherwise, the official ATA program ID will be used by default for CPI.
+    pub ata_program_id: Option<&'a Pubkey>,
+
     pub payer: CpiAuthority<'a, 'b>,
     pub associated_account: &'b NoStdAccountInfo,
     pub account_owner: &'b NoStdAccountInfo,
@@ -34,7 +37,7 @@ impl<'a, 'b: 'a> Create<'a, 'b> {
     #[inline(always)]
     fn _into_invoke(self, data: &[u8]) {
         let Self {
-            associated_token_account_program_id,
+            ata_program_id,
             payer,
             associated_account,
             account_owner,
@@ -45,7 +48,7 @@ impl<'a, 'b: 'a> Create<'a, 'b> {
         } = self;
 
         CpiInstruction {
-            program_id: associated_token_account_program_id,
+            program_id: ata_program_id.unwrap_or(&super::ID),
             accounts: &[
                 payer.to_meta_c_signer(),
                 associated_account.to_meta_c(),
