@@ -1,4 +1,5 @@
 use crate::{
+    account::ata::ID,
     cpi::{CpiAuthority, CpiInstruction},
     entrypoint::NoStdAccountInfo,
     pubkey::Pubkey,
@@ -48,7 +49,7 @@ impl<'a, 'b: 'a> Create<'a, 'b> {
         } = self;
 
         CpiInstruction {
-            program_id: ata_program_id.unwrap_or(&super::ID),
+            program_id: ata_program_id.unwrap_or(&ID),
             accounts: &[
                 payer.to_meta_c_signer(),
                 associated_account.to_meta_c(),

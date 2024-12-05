@@ -15,5 +15,3 @@
 mod create;
 
 pub use create::*;
-
-crate::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
