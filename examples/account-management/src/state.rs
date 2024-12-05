@@ -1,7 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use sealevel_tools::{
     account::BorshAccountSchema,
-    account_info::{AccountInfoConstraints, WritableBorshAccount, NO_CONSTRAINTS},
+    account_info::{AccountInfoConstraints, WritableBorshAccount, NO_ACCOUNT_INFO_CONSTRAINTS},
     discriminator::{Discriminate, Discriminator},
     pda::DeriveAddress,
     pubkey::Pubkey,
@@ -10,7 +10,7 @@ use sealevel_tools::{
 pub(super) const OWNED_BY_THIS_PROGRAM: AccountInfoConstraints<'static, 'static> =
     AccountInfoConstraints {
         owner: Some(&crate::ID),
-        ..NO_CONSTRAINTS
+        ..NO_ACCOUNT_INFO_CONSTRAINTS
     };
 
 #[derive(Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize)]
