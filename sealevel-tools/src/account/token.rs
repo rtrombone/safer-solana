@@ -66,13 +66,13 @@ impl<T: BaseState + Pack> AccountSerde<0> for StateWithExtensionsBaseSchema<T> {
 }
 
 /// Seeds to derive the Associated Token Account address.
-pub struct AtaSeeds<'a> {
+pub struct AssociatedTokenAccountSeeds<'a> {
     pub owner: &'a Pubkey,
-    pub mint: &'a Pubkey,
     pub token_program_id: &'a Pubkey,
+    pub mint: &'a Pubkey,
 }
 
-impl<'a> AtaSeeds<'a> {
+impl<'a> AssociatedTokenAccountSeeds<'a> {
     /// If the program ID is not provided, the official ATA program ID will be used.
     pub fn find_program_address(&self, program_id: Option<&Pubkey>) -> (Pubkey, u8) {
         Pubkey::find_program_address(
@@ -85,3 +85,6 @@ impl<'a> AtaSeeds<'a> {
         )
     }
 }
+
+#[deprecated(note = "Please use the `AssociatedTokenAccountSeeds` type instead.")]
+pub type AtaSeeds<'a> = AssociatedTokenAccountSeeds<'a>;
