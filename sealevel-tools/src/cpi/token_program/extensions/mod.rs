@@ -40,6 +40,7 @@ use crate::pubkey::Pubkey;
 
 const NONE_PUBKEY: Pubkey = Pubkey::new_from_array([0; 32]);
 
+#[inline(always)]
 fn unwrap_or_default_pubkey(key: Option<&Pubkey>) -> &Pubkey {
     key.unwrap_or(&NONE_PUBKEY)
 }
@@ -51,6 +52,7 @@ const IX_INITIALIZE_POINTER_DATA_LEN: usize = {
     + size_of::<Pubkey>() // pointer
 };
 
+#[inline(always)]
 fn serialize_initialize_pointer_instruction_data(
     selector: u8,
     authority: &Pubkey,
