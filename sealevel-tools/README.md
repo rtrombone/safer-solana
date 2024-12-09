@@ -4,7 +4,7 @@
 
 # Sealevel Tools
 
-Tools for safer Solana development.
+Tools for safer and CU-optimized Solana development.
 
 This crate is not an attempt to create a new framework for writing Solana
 programs. Instead, it is a set of tools that should help a developer write a
@@ -16,17 +16,14 @@ See crate [documentation] for more information.
 
 ## Dependencies
 
-Minimum-supported Rust version: 1.75. For reference, these are the
-minimum-supported versions of the following minor versions of Solana crates:
-- v2.0 -- MSRV 1.75
-- v2.1 -- MSRV 1.79
-
-Keep in mind that with future Solana 2.0 minor versions, MSRV may uptick.
+Minimum-supported Rust version: **1.79**, which matches MSRV of Solana-related
+crates with version ^2.1.4. Keep in mind that with future Solana versions, MSRV
+may uptick.
 
 Currently, this package leverages [sealevel-nostd-entrypoint], which is a fork
 of [solana-nostd-entrypoint] (an optimized no-std program entrypoint library)
-updated to use Solana 2.0. Its contents are re-exported for convenience into the
-[entrypoint] submodule.
+updated to use Solana ^2.0. Its contents are re-exported for convenience into
+the [entrypoint] submodule.
 
 ## Feature Flags
 
@@ -43,7 +40,7 @@ To disable these defaults (e.g. using a heapless environment via
 [noalloc_allocator]), use `default-features = false` in your Cargo.toml and add
 the features you need for your program:
 ```toml
-sealevel-tools = { version = "0.6", default-features = false, features = ["noalloc-default"] }
+sealevel-tools = { version = "0.7", default-features = false, features = ["noalloc-default"] }
 ```
 
 ### `features = ["alloc"]`

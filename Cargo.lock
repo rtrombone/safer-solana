@@ -1306,7 +1306,7 @@ dependencies = [
 
 [[package]]
 name = "example-account-management"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "borsh 1.5.3",
  "examples-common",
@@ -1317,7 +1317,7 @@ dependencies = [
 
 [[package]]
 name = "example-token-management"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "borsh 1.5.3",
  "examples-common",
@@ -1329,7 +1329,7 @@ dependencies = [
 
 [[package]]
 name = "examples-common"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "solana-banks-interface",
  "solana-program-test",
@@ -3427,7 +3427,7 @@ dependencies = [
 
 [[package]]
 name = "sealevel-tools"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "base64 0.22.1",
  "bincode",
