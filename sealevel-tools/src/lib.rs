@@ -34,19 +34,6 @@
 //! entrypoint_nostd!(process_instruction, 8);
 //! ```
 //!
-//! Also re-exported are the following modules from [solana_program]:
-//! - [clock] -- Working with slots and timestamps via `Clock::get()`.
-//! - [declare_id!](declare_id) -- Hard-coded ID for your program.
-//! - [instruction] -- Building instructions, which can be used with [cpi::invoke_signed].
-//! - [log] -- Writing information to program logs.
-//! - [msg!](msg) -- Useful for logging with formatting (used in conjunction with [alloc::format]).
-//! - [program_error] -- Useful for returning an error with a [Result] of a non-void type.
-//! - [program_memory] -- Useful low-level memory operations.
-//! - [program_pack] -- For [Pack](program_pack::Pack) trait.
-//! - [mod@pubkey] and [pubkey!]
-//! - [rent] -- Calculating rent for accounts via `Rent::get()`.
-//! - [sysvar] -- Needed for `T::get()` when working with sysvars.
-//!
 //! See this crate's [README] for more information about MSRV and feature flags.
 //!
 //! # Examples
@@ -372,7 +359,7 @@
 //! #    pubkey::Pubkey,
 //! # };
 //! #
-//! # solana_program::declare_id!("Examp1eThing1111111111111111111111111111111");
+//! # sealevel_tools::declare_id!("Examp1eThing1111111111111111111111111111111");
 //! #
 //! #[derive(Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize)]
 //! pub struct Thing {
@@ -433,7 +420,7 @@
 //! poison. But larger binary size translates to a higher deployment cost and higher compute units can
 //! affect your end users.
 //!
-//! [AccountInfo]: https://docs.rs/solana-program/latest/solana_program/account_info/struct.AccountInfo.html
+//! [AccountInfo]: https://docs.rs/solana-account-info/latest/solana_account_info/struct.AccountInfo.html
 //! [Accounts]: https://docs.rs/anchor-lang/latest/anchor_lang/trait.Accounts.html
 //! [Discriminator]: crate::discriminator::Discriminator
 //! [AccountInfoConstraints]: crate::account_info::AccountInfoConstraints
@@ -444,13 +431,13 @@
 //! [TakeAccounts]: crate::account_info::TakeAccounts
 //! [WritableAccount]: crate::account_info::WritableAccount
 //! [anchor-lang]: https://docs.rs/anchor-lang/latest/anchor_lang/
-//! [msg!]: https://docs.rs/solana-program/latest/solana_program/macro.msg.html
-//! [next_account_info]: https://docs.rs/solana-program/latest/solana_program/account_info/fn.next_account_info.html
+//! [msg!]: https://docs.rs/solana-msg/latest/solana_msg/macro.msg.html
+//! [next_account_info]: https://docs.rs/solana-account-info/latest/solana_account_info/fn.next_account_info.html
 //! [safer-solana]: https://github.com/rtrombone/safer-solana
 //! [spl-discriminator]: https://docs.rs/spl-discriminator/latest/spl_discriminator/
 //! [shank]: https://docs.rs/shank/latest/shank/
 //! [try_next_enumerated_account]: crate::account_info::try_next_enumerated_account
-//! [working examples]: https://github.com/rtrombone/safer-solana/tree/v0.5.0/examples/
+//! [working examples]: https://github.com/rtrombone/safer-solana/tree/v0.6.1/examples/
 
 #![deny(dead_code, unused_imports, unused_mut, unused_variables)]
 #![no_std]
@@ -460,17 +447,19 @@ pub mod account_info;
 pub mod cpi;
 pub mod discriminator;
 mod error;
+pub mod log;
 pub mod pda;
+pub mod sysvar;
 
 pub use error::SealevelToolsError;
 
-/// Re-export of [sealevel_nostd_entrypoint] and [solana_program::entrypoint::ProgramResult].
+/// Re-export of [sealevel_nostd_entrypoint] items.
 ///
 /// ### Notes
 ///
 /// Because our package leverages this optimized no-std Solana entrypoint crate for account and CPI
-/// handling, its contents are re-exported here for convenience (so there is no need to add this
-/// dependency in your program).
+/// handling, its contents are re-exported here for convenience (so there is no need to add
+/// [sealevel_nostd_entrypoint] as a dependency in your program).
 pub mod entrypoint {
     pub use sealevel_nostd_entrypoint::{
         basic_panic_impl, deserialize_nostd, deserialize_nostd_no_dup,
@@ -479,7 +468,8 @@ pub mod entrypoint {
         entrypoint_nostd_no_program, noalloc_allocator, AccountInfoC, AccountMetaC, InstructionC,
         NoStdAccountInfo, NoStdAccountInfoInner, RcRefCellInner, Ref, RefMut,
     };
-    pub use solana_program::entrypoint::ProgramResult;
+
+    pub use crate::program_error::ProgramResult;
 }
 
 #[cfg(feature = "alloc")]
@@ -487,10 +477,8 @@ extern crate alloc;
 
 #[cfg(feature = "borsh")]
 pub use borsh;
+pub use solana_msg::msg;
+pub use solana_program_error as program_error;
+pub use solana_pubkey::{self as pubkey, declare_id, pubkey};
 #[cfg(feature = "token")]
 pub use spl_token_2022;
-
-pub use solana_program::{
-    clock, declare_id, instruction, log, msg, program_error, program_memory, program_pack, pubkey,
-    rent, sysvar,
-};

@@ -1,11 +1,12 @@
 use core::mem::size_of;
 
+use solana_program_pack::Pack;
+
 use crate::{
     account_info::{is_any_token_program_id, Account},
     cpi::{system_program::CreateAccount, CpiAuthority, CpiInstruction},
     entrypoint::NoStdAccountInfo,
     program_error::ProgramError,
-    program_pack::Pack,
     pubkey::Pubkey,
     spl_token_2022::state::Mint,
 };

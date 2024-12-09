@@ -1,4 +1,5 @@
 use crate::{
+    account::system::ID,
     cpi::{CpiAuthority, CpiInstruction},
     entrypoint::NoStdAccountInfo,
 };
@@ -37,7 +38,7 @@ pub(super) fn _invoke_transfer(from: &CpiAuthority, to: &CpiAuthority, lamports:
     let to_account = to.account;
 
     CpiInstruction {
-        program_id: &super::ID,
+        program_id: &ID,
         accounts: &[from_account.to_meta_c(), to_account.to_meta_c_signer()],
         data: &instruction_data,
     }
@@ -65,7 +66,7 @@ fn _serialize_instruction_data(lamports: u64) -> [u8; IX_DATA_LEN] {
 
 #[cfg(test)]
 mod test {
-    use solana_program::system_instruction::SystemInstruction;
+    use solana_sdk::system_instruction::SystemInstruction;
 
     use super::*;
 

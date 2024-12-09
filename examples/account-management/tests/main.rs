@@ -54,7 +54,7 @@ async fn test_thing() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        2_550,
+        2_530,
         CU_TOLERANCE
     ));
 
@@ -140,7 +140,7 @@ async fn test_thing() {
     assert!(!is_program_failure(&ID, &tx_meta.log_messages));
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        390,
+        350,
         CU_TOLERANCE
     ));
 
@@ -199,7 +199,7 @@ async fn test_init_thing_already_having_lamports() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_200;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        5_225,
+        5_200,
         CU_TOLERANCE
     ));
 

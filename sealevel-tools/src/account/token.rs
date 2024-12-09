@@ -15,10 +15,11 @@ pub mod legacy_token {
 
 use core::ops::{Deref, DerefMut};
 
+use solana_program_pack::Pack;
+
 use crate::{
     discriminator::Discriminate,
     program_error::ProgramError,
-    program_pack::Pack,
     pubkey::Pubkey,
     spl_token_2022::extension::{BaseState, StateWithExtensions},
 };

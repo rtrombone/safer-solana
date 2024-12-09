@@ -46,7 +46,9 @@ pub use spl_token_2022::{extension::ExtensionType, instruction::AuthorityType};
 
 use core::mem::size_of;
 
-use crate::{error::SealevelToolsError, program_pack::Pack, pubkey::Pubkey};
+use solana_program_pack::Pack;
+
+use crate::{error::SealevelToolsError, pubkey::Pubkey};
 
 const BASE_WITH_EXTENSIONS_LEN: usize = {
     spl_token_2022::state::Account::LEN // base size

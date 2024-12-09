@@ -1,4 +1,7 @@
-use crate::cpi::{CpiAuthority, CpiInstruction};
+use crate::{
+    account::system::ID,
+    cpi::{CpiAuthority, CpiInstruction},
+};
 
 /// Arguments for the allocate instruction on the System program, which resizes a System-owned
 /// account.
@@ -23,7 +26,7 @@ pub(super) fn _invoke_allocate(account: &CpiAuthority, space: u64) {
     let instruction_data = _serialize_instruction_data(space);
 
     CpiInstruction {
-        program_id: &super::ID,
+        program_id: &ID,
         accounts: &[account.to_meta_c_signer()],
         data: &instruction_data,
     }
@@ -48,7 +51,7 @@ fn _serialize_instruction_data(space: u64) -> [u8; IX_DATA_LEN] {
 
 #[cfg(test)]
 mod test {
-    use solana_program::system_instruction::SystemInstruction;
+    use solana_sdk::system_instruction::SystemInstruction;
 
     use super::*;
 

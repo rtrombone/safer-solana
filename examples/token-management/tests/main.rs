@@ -45,7 +45,7 @@ async fn test_init_mint_token_program() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        6_400,
+        6_350,
         CU_TOLERANCE
     ));
 }
@@ -72,7 +72,7 @@ async fn test_init_token_account_token_program() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        8050,
+        7_950,
         CU_TOLERANCE
     ));
 }
@@ -94,7 +94,7 @@ async fn test_init_ata_token_program() {
     .unwrap();
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        24_500,
+        24_400,
         CU_TOLERANCE
     ));
 
@@ -111,7 +111,7 @@ async fn test_init_ata_token_program() {
     .unwrap();
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        24_500,
+        24_400,
         CU_TOLERANCE
     ));
 }
@@ -182,7 +182,7 @@ async fn test_suboptimal_mint_to_token_program() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        6_600,
+        6_550,
         CU_TOLERANCE
     ));
 }
@@ -243,7 +243,7 @@ async fn test_transfer_checked_token_program() {
     // No PDA addresses found, so no CU adjustments.
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        7_900,
+        7_800,
         CU_TOLERANCE
     ));
 }
@@ -308,7 +308,7 @@ async fn test_init_mint_token_2022_program() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        5_000,
+        4_900,
         CU_TOLERANCE
     ));
 }
@@ -339,7 +339,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_900,
+        7_850,
         CU_TOLERANCE
     ));
 
@@ -363,7 +363,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_600,
+        7_550,
         CU_TOLERANCE
     ));
 
@@ -387,7 +387,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_600,
+        7_550,
         CU_TOLERANCE
     ));
 
@@ -411,7 +411,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_600,
+        7_550,
         CU_TOLERANCE
     ));
 
@@ -435,7 +435,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_450,
+        7_400,
         CU_TOLERANCE
     ));
 
@@ -459,7 +459,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_550,
+        7_500,
         CU_TOLERANCE
     ));
 
@@ -483,7 +483,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        8_600,
+        8_550,
         CU_TOLERANCE
     ));
 
@@ -507,7 +507,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_600,
+        7_550,
         CU_TOLERANCE
     ));
 
@@ -531,7 +531,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_600,
+        7_550,
         CU_TOLERANCE
     ));
 
@@ -557,7 +557,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        13_100,
+        13_000,
         CU_TOLERANCE
     ));
 
@@ -591,7 +591,7 @@ async fn test_init_mint_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        31_250,
+        31_150,
         CU_TOLERANCE
     ));
 }
@@ -618,7 +618,7 @@ async fn test_init_token_account_token_2022_program() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        5_250,
+        5_150,
         CU_TOLERANCE
     ));
 }
@@ -640,7 +640,7 @@ async fn test_init_ata_token_2022_program() {
     .unwrap();
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        17_850,
+        17_700,
         CU_TOLERANCE
     ));
 
@@ -657,7 +657,7 @@ async fn test_init_ata_token_2022_program() {
     .unwrap();
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        17_850,
+        17_750,
         CU_TOLERANCE
     ));
 }
@@ -688,7 +688,7 @@ async fn test_init_token_account_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        6_500,
+        6_450,
         CU_TOLERANCE
     ));
 
@@ -712,7 +712,7 @@ async fn test_init_token_account_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        6_650,
+        6_600,
         CU_TOLERANCE
     ));
 
@@ -736,7 +736,7 @@ async fn test_init_token_account_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        6_500,
+        6_450,
         CU_TOLERANCE
     ));
 
@@ -762,7 +762,7 @@ async fn test_init_token_account_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        8_090,
+        8_050,
         CU_TOLERANCE
     ));
 
@@ -786,7 +786,7 @@ async fn test_init_token_account_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        6_650,
+        6_600,
         CU_TOLERANCE
     ));
 
@@ -810,7 +810,7 @@ async fn test_init_token_account_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        8_090,
+        8_050,
         CU_TOLERANCE
     ));
 
@@ -838,7 +838,7 @@ async fn test_init_token_account_with_extensions() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        7_850,
+        7_750,
         CU_TOLERANCE
     ));
 }
@@ -857,7 +857,7 @@ async fn test_get_account_data_size_token_2022_program() {
     // No PDA addresses found, so no CU adjustments.
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        2_600,
+        2_550,
         CU_TOLERANCE
     ));
     assert_eq!(
@@ -891,7 +891,7 @@ async fn test_init_token_account_token_2022_program_immutable_owner() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 8 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        6_800,
+        6_750,
         CU_TOLERANCE
     ));
 }
@@ -914,7 +914,7 @@ async fn test_mint_to_token_2022_program() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        2_600,
+        2_550,
         CU_TOLERANCE
     ));
 }
@@ -937,7 +937,7 @@ async fn test_suboptimal_mint_to_token_2022_program() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        3_050,
+        3_000,
         CU_TOLERANCE
     ));
 }
@@ -956,7 +956,7 @@ async fn test_burn_token_2022_program() {
     // No PDA addresses found, so no CU adjustments.
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        2_650,
+        2_600,
         CU_TOLERANCE
     ));
 }
@@ -977,7 +977,7 @@ async fn test_transfer_token_2022_program() {
     // No PDA addresses found, so no CU adjustments.
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        2_800,
+        2_750,
         CU_TOLERANCE
     ));
 }
@@ -998,7 +998,7 @@ async fn test_transfer_checked_token_2022_program() {
     // No PDA addresses found, so no CU adjustments.
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        4_100,
+        4_000,
         CU_TOLERANCE
     ));
 }
@@ -1019,7 +1019,7 @@ async fn test_approve_token_2022_program() {
     // No PDA addresses found, so no CU adjustments.
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        2_450,
+        2_400,
         CU_TOLERANCE
     ));
 }
@@ -1037,7 +1037,7 @@ async fn test_revoke_token_2022_program() {
     // No PDA addresses found, so no CU adjustments.
     assert!(is_compute_units_within(
         tx_meta.compute_units_consumed,
-        2_150,
+        2_100,
         CU_TOLERANCE
     ));
 }
@@ -1064,7 +1064,7 @@ async fn test_init_mint_token_program_and_freeze_authority() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        6_500,
+        6_450,
         CU_TOLERANCE
     ));
 }
@@ -1091,7 +1091,7 @@ async fn test_init_mint_token_2022_program_and_freeze_authority() {
     let adjusted_compute_units_consumed = tx_meta.compute_units_consumed - 5 * 1_500;
     assert!(is_compute_units_within(
         adjusted_compute_units_consumed,
-        5_100,
+        5_050,
         CU_TOLERANCE
     ));
 }

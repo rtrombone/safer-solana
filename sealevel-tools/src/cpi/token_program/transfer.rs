@@ -21,7 +21,7 @@ pub const MAX_ADDITIONAL_ACCOUNTS_NOALLOC: usize = 12;
 ///
 /// Also, do not be fooled by the suffix of this function (because all of the invoke methods are
 /// suffixed with "unchecked" to indicate a distinction between this library's way of performing CPI
-/// calls vs the way found in [solana_program::program::invoke_signed]).
+/// calls vs the way found in [solana_cpi::invoke_signed]).
 ///
 /// There is another method called [TransferChecked], which specifically handles invoking the
 /// transfer checked instruction. It will perform a length check on the additional accounts if the

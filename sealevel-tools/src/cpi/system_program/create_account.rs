@@ -1,13 +1,11 @@
 use core::mem::size_of;
 
 use crate::{
-    account::AccountSerde,
+    account::{system::ID, AccountSerde},
     account_info::Account,
     cpi::{CpiAuthority, CpiInstruction},
     program_error::ProgramError,
     pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
 };
 
 /// Arguments to create an account reliably. If the account already has lamports, it will be topped
@@ -166,7 +164,7 @@ impl<'a, 'b: 'a> CreateAccount<'a, 'b> {
         } = self;
 
         let space = space.unwrap_or_default();
-        let lamports = lamports.unwrap_or(Rent::get().unwrap().minimum_balance(space));
+        let lamports = lamports.unwrap_or(crate::sysvar::get_rent_minimum_balance(space));
 
         let current_lamports = *to.try_borrow_lamports()?;
 
@@ -233,7 +231,7 @@ fn _invoke_create_account(
     let instruction_data = _serialize_instruction_data(lamports, space, owner);
 
     CpiInstruction {
-        program_id: &super::ID,
+        program_id: &ID,
         accounts: &[from.to_meta_c(), to.to_meta_c_signer()],
         data: &instruction_data,
     }
@@ -262,7 +260,7 @@ fn _serialize_instruction_data(lamports: u64, space: u64, owner: &Pubkey) -> [u8
 
 #[cfg(test)]
 mod test {
-    use solana_program::system_instruction::SystemInstruction;
+    use solana_sdk::system_instruction::SystemInstruction;
 
     use super::*;
 

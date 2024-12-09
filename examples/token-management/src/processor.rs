@@ -18,7 +18,7 @@ use crate::{
 
 #[inline(always)]
 pub fn init_ata(accounts: &[NoStdAccountInfo], idempotent: bool) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -47,7 +47,7 @@ pub fn init_ata(accounts: &[NoStdAccountInfo], idempotent: bool) -> ProgramResul
     let (_, token_program) =
         try_next_enumerated_account::<TokenProgram>(&mut accounts_iter, Default::default())?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     sealevel_tools::cpi::ata_program::Create {
         ata_program_id: None,
@@ -61,7 +61,7 @@ pub fn init_ata(accounts: &[NoStdAccountInfo], idempotent: bool) -> ProgramResul
     }
     .into_invoke();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
@@ -84,7 +84,7 @@ pub fn init_mint_with_extensions(
         confidential_transfer_fee,
     }: InitMintWithExtensionsData,
 ) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -108,7 +108,7 @@ pub fn init_mint_with_extensions(
 
     let (mint_authority_addr, _) = state::find_authority_address();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let extensions = token_program_cpi::InitializeMintExtensions {
         close_authority: if close_authority {
@@ -185,7 +185,7 @@ pub fn init_mint_with_extensions(
         },
     };
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     token_program_cpi::CreateMint {
         token_program_id: token_program.key(),
@@ -198,7 +198,7 @@ pub fn init_mint_with_extensions(
     }
     .try_into_invoke()?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
@@ -209,7 +209,7 @@ pub fn init_token_account(
     owner: Pubkey,
     immutable_owner: bool,
 ) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -237,7 +237,7 @@ pub fn init_token_account(
         },
     )?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     token_program_cpi::CreateTokenAccount {
         payer: payer.as_cpi_authority(),
@@ -252,14 +252,14 @@ pub fn init_token_account(
     }
     .try_into_invoke()?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -293,7 +293,7 @@ pub fn mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
         },
     )?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     token_program_cpi::MintTo {
         token_program_id,
@@ -305,14 +305,14 @@ pub fn mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     }
     .into_invoke();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn suboptimal_mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -346,7 +346,7 @@ pub fn suboptimal_mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> Program
         },
     )?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     sealevel_tools::cpi::invoke_signed(
         &spl_token_2022::instruction::mint_to(
@@ -365,14 +365,14 @@ pub fn suboptimal_mint_to(accounts: &[NoStdAccountInfo], amount: u64) -> Program
         &[&[state::AUTHORITY_SEED, &[mint_authority_bump]]],
     );
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn burn(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -394,7 +394,7 @@ pub fn burn(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     let (_, authority) =
         try_next_enumerated_account::<Authority>(&mut accounts_iter, Default::default())?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     token_program_cpi::Burn {
         token_program_id,
@@ -405,14 +405,14 @@ pub fn burn(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     }
     .into_invoke();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn transfer(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -434,7 +434,7 @@ pub fn transfer(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     let (_, authority) =
         try_next_enumerated_account::<Authority>(&mut accounts_iter, Default::default())?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     token_program_cpi::Transfer {
         token_program_id,
@@ -446,14 +446,14 @@ pub fn transfer(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     }
     .into_invoke();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn transfer_checked(accounts: &[NoStdAccountInfo], amount: u64, decimals: u8) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -480,7 +480,7 @@ pub fn transfer_checked(accounts: &[NoStdAccountInfo], amount: u64, decimals: u8
     let (index, authority) =
         try_next_enumerated_account::<Authority>(&mut accounts_iter, Default::default())?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     token_program_cpi::Transfer {
         token_program_id,
@@ -496,14 +496,14 @@ pub fn transfer_checked(accounts: &[NoStdAccountInfo], amount: u64, decimals: u8
     }
     .into_invoke();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn approve(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -524,7 +524,7 @@ pub fn approve(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     let (_, authority) =
         try_next_enumerated_account::<Authority>(&mut accounts_iter, Default::default())?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     token_program_cpi::Approve {
         token_program_id,
@@ -535,14 +535,14 @@ pub fn approve(accounts: &[NoStdAccountInfo], amount: u64) -> ProgramResult {
     }
     .into_invoke();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn revoke(accounts: &[NoStdAccountInfo]) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -558,7 +558,7 @@ pub fn revoke(accounts: &[NoStdAccountInfo]) -> ProgramResult {
     let (_, authority) =
         try_next_enumerated_account::<Authority>(&mut accounts_iter, Default::default())?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     token_program_cpi::Revoke {
         token_program_id,
@@ -567,7 +567,7 @@ pub fn revoke(accounts: &[NoStdAccountInfo]) -> ProgramResult {
     }
     .into_invoke();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
@@ -577,7 +577,7 @@ pub fn get_account_data_size(
     accounts: &[NoStdAccountInfo],
     extension_types: ExtensionTypes,
 ) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -585,7 +585,7 @@ pub fn get_account_data_size(
     let (_, mint_account) =
         try_next_enumerated_account::<ReadonlyAccount>(&mut accounts_iter, Default::default())?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let account_size = token_program_cpi::GetAccountDataSize {
         token_program_id: mint_account.owner(),
@@ -594,11 +594,11 @@ pub fn get_account_data_size(
     }
     .into_return_data();
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     set_return_data(&account_size.to_le_bytes());
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }

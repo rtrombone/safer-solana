@@ -1,8 +1,6 @@
 use core::ops::Deref;
 
-use solana_program::system_program::ID;
-
-use crate::{entrypoint::NoStdAccountInfo, error::SealevelToolsError};
+use crate::{account::system::ID, entrypoint::NoStdAccountInfo, error::SealevelToolsError};
 
 use super::{Account, Program};
 

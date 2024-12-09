@@ -1,15 +1,13 @@
 use core::ops::Deref;
 
-use solana_program::bpf_loader_upgradeable::{UpgradeableLoaderState, ID};
-
 use crate::{
-    entrypoint::NoStdAccountInfo, error::SealevelToolsError, program_error::ProgramError,
-    pubkey::Pubkey,
+    account::bpf_loader_upgradeable::ID, entrypoint::NoStdAccountInfo, error::SealevelToolsError,
+    program_error::ProgramError, pubkey::Pubkey,
 };
 
 use super::{Account, Program};
 
-const SIZE_OF_PROGRAMDATA_METADATA: usize = UpgradeableLoaderState::size_of_programdata_metadata();
+const SIZE_OF_PROGRAMDATA_METADATA: usize = 45;
 
 /// Representing the BPF loader Upgradeable program.
 #[derive(Clone, PartialEq, Eq)]
@@ -128,7 +126,17 @@ fn try_deserialize_program_data(
 
 #[cfg(test)]
 mod test {
+    use solana_sdk::bpf_loader_upgradeable::UpgradeableLoaderState;
+
     use super::*;
+
+    #[test]
+    fn test_consts() {
+        assert_eq!(
+            SIZE_OF_PROGRAMDATA_METADATA,
+            UpgradeableLoaderState::size_of_programdata_metadata()
+        );
+    }
 
     #[test]
     fn test_try_deserialize_program_data() {

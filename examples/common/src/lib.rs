@@ -1,6 +1,6 @@
 use solana_banks_interface::TransactionMetadata;
-use solana_program::pubkey::Pubkey;
 use solana_program_test::BanksClient;
+use solana_pubkey::Pubkey;
 use solana_sdk::{hash::Hash, signer::keypair::Keypair};
 
 pub fn is_program_failure(program_id: &Pubkey, log_messages: &[String]) -> bool {

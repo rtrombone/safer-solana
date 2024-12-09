@@ -22,7 +22,7 @@ pub fn try_close_account(
     unsafe {
         core::ptr::write_volatile(
             owner as *mut [u8; 32],
-            solana_program::system_program::ID.to_bytes(),
+            crate::account::system::ID.to_bytes(),
         );
     }
 

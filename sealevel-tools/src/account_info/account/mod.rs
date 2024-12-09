@@ -227,7 +227,7 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> De
 /// ```
 /// use sealevel_tools::{
 ///     account_info::{
-///         try_next_enumerated_account, AccountInfoConstraints, Payer, Program,
+///         try_next_enumerated_account, AccountInfoConstraints, Payer, SystemProgram,
 ///         ReadonlyAccount,
 ///     },
 ///     entrypoint::{NoStdAccountInfo, ProgramResult},
@@ -251,13 +251,11 @@ impl<'a, const WRITE: bool, const DISC_LEN: usize, T: AccountSerde<DISC_LEN>> De
 ///         Default::default()
 ///     )?;
 ///
-///     // Next account must be System program.
-///     let (index, system_program) = try_next_enumerated_account::<Program>(
+///     // Next account must be the System program.
+///     let (index, system_program) = try_next_enumerated_account::<SystemProgram>(
 ///         &mut accounts_iter,
-///         AccountInfoConstraints {
-///             key: Some(&solana_program::system_program::ID),
-///             ..Default::default()
-///         })?;
+///         Default::default()
+///     )?;
 ///
 ///     Ok(())
 /// }
@@ -287,7 +285,7 @@ where
 /// use sealevel_tools::{
 ///     account_info::{
 ///         try_next_enumerated_account, try_next_enumerated_optional_account,
-///         AccountInfoConstraints, Payer, Program, ReadonlyAccount,
+///         AccountInfoConstraints, Payer, ReadonlyAccount, SystemProgram
 ///     },
 ///     entrypoint::{NoStdAccountInfo, ProgramResult},
 ///     pubkey::Pubkey,
@@ -315,13 +313,11 @@ where
 ///         // Do something useful with this read-only account here.
 ///     }
 ///
-///     // Next account must be System program.
-///     let (index, system_program) = try_next_enumerated_account::<Program>(
+///     // Next account must be the System program.
+///     let (index, system_program) = try_next_enumerated_account::<SystemProgram>(
 ///         &mut accounts_iter,
-///         AccountInfoConstraints {
-///             key: Some(&solana_program::system_program::ID),
-///             ..Default::default()
-///         })?;
+///         Default::default()
+///     )?;
 ///
 ///     Ok(())
 /// }

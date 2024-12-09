@@ -11,10 +11,10 @@ pub mod token_program;
 #[cfg(feature = "alloc")]
 pub use alloc::*;
 
-pub use solana_program::program::{set_return_data, MAX_RETURN_DATA};
+pub use solana_cpi::{set_return_data, MAX_RETURN_DATA};
 
 #[cfg(feature = "alloc")]
-pub use solana_program::program::get_return_data as checked_dynamic_return_data;
+pub use solana_cpi::get_return_data as checked_dynamic_return_data;
 
 use core::ops::Deref;
 
@@ -130,8 +130,8 @@ impl<'a> CpiInstruction<'a> {
     }
 }
 
-/// Similar to [invoke_signed](solana_program::program::invoke_signed), but performs a lower level
-/// call to the runtime and does not try to perform any account borrows.
+/// Similar to [invoke_signed](solana_cpi::invoke_signed), but performs a lower level call to the
+/// runtime and does not try to perform any account borrows.
 #[allow(unexpected_cfgs)]
 #[inline(always)]
 pub fn invoke_signed_c(
@@ -141,7 +141,7 @@ pub fn invoke_signed_c(
 ) {
     #[cfg(target_os = "solana")]
     unsafe {
-        solana_program::syscalls::sol_invoke_signed_c(
+        solana_cpi::syscalls::sol_invoke_signed_c(
             instruction as *const InstructionC as *const u8,
             infos.as_ptr() as *const u8,
             infos.len() as u64,
@@ -156,8 +156,7 @@ pub fn invoke_signed_c(
 
 /// Check lamports and data borrows on [NoStdAccountInfo]. If writable, this method checks mutable
 /// borrows. Otherwise it checks immutable borrows. These borrows are checked in
-/// [solana_program::program::invoke_signed] before CPI is called (and will be executed in
-/// [try_invoke_signed]).
+/// [solana_cpi::invoke_signed] before CPI is called (and will be executed in [try_invoke_signed]).
 #[inline(always)]
 pub fn try_check_borrow_account_info(account_info: &NoStdAccountInfo) -> ProgramResult {
     if account_info.is_writable() {
@@ -172,8 +171,8 @@ pub fn try_check_borrow_account_info(account_info: &NoStdAccountInfo) -> Program
 }
 
 /// Get the return data from an invoked program as a fixed array of bytes (maximum size defined by
-/// [solana_program::program::MAX_RETURN_DATA]). If the return data's size differs from the
-/// specified array size, this method will return [None].
+/// [solana_cpi::MAX_RETURN_DATA]). If the return data's size differs from the specified array size,
+/// this method will return [None].
 #[allow(unexpected_cfgs)]
 pub fn checked_return_data<const DATA_LEN: usize>() -> Option<(Pubkey, [u8; DATA_LEN])> {
     assert!(
@@ -187,7 +186,7 @@ pub fn checked_return_data<const DATA_LEN: usize>() -> Option<(Pubkey, [u8; DATA
         let mut program_id = Pubkey::default();
 
         let size = unsafe {
-            solana_program::syscalls::sol_get_return_data(
+            solana_cpi::syscalls::sol_get_return_data(
                 buf.as_mut_ptr(),
                 buf.len() as u64,
                 &mut program_id,

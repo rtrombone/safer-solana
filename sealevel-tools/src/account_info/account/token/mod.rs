@@ -1,10 +1,11 @@
 use core::ops::Deref;
 
+use solana_program_pack::{IsInitialized, Pack};
+
 use crate::{
     account::{legacy_token, token_extensions, StateWithExtensionsBaseSchema},
     entrypoint::NoStdAccountInfo,
     error::SealevelToolsError,
-    program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
     spl_token_2022::{
         extension::BaseState,

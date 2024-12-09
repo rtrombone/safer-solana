@@ -9,10 +9,9 @@ pub use close::*;
 #[cfg(feature = "alloc")]
 use alloc::format;
 
-use crate::{
-    entrypoint::NoStdAccountInfo, error::SealevelToolsError, program_error::ProgramError,
-    pubkey::Pubkey,
-};
+use crate::{error::SealevelToolsError, program_error::ProgramError, pubkey::Pubkey};
+
+pub use crate::entrypoint::NoStdAccountInfo;
 
 /// Optional arguments for [try_next_enumerated_account_info], which specify constraints for the next
 /// [NoStdAccountInfo].
@@ -105,8 +104,7 @@ pub struct MatchDataSlice<'a> {
     pub data: &'a [u8],
 }
 
-/// Similar to [next_account_info](solana_program::account_info::next_account_info), but using an
-/// enumerated iterator and optional constraints.
+/// Similar to [next_account_info], but using an enumerated iterator and optional constraints.
 ///
 /// If any of the constraints are violated, a custom program error code with
 /// [SealevelToolsError::ACCOUNT_INFO] is returned, as well as a program
@@ -130,11 +128,11 @@ pub struct MatchDataSlice<'a> {
 /// ) -> ProgramResult {
 ///     let mut accounts_iter = accounts.iter().enumerate();
 ///
-///     // Next account must be the clock sysvar.
+///     // First account must be the System program.
 ///     let (index, account) = try_next_enumerated_account_info(
 ///         &mut accounts_iter,
 ///         AccountInfoConstraints {
-///             key: Some(&solana_program::sysvar::clock::ID),
+///             key: Some(&sealevel_tools::account::system::ID),
 ///             ..Default::default()
 ///         })?;
 ///
@@ -149,6 +147,8 @@ pub struct MatchDataSlice<'a> {
 ///     Ok(())
 /// }
 /// ```
+///
+/// [next_account_info]: https://docs.rs/solana-account-info/latest/solana_account_info/fn.next_account_info.html
 #[inline(always)]
 pub fn try_next_enumerated_account_info<'a, I>(
     iter: &mut I,
@@ -192,12 +192,12 @@ where
 /// ) -> ProgramResult {
 ///     let mut accounts_iter = accounts.iter().enumerate();
 ///
-///     // Next account might be the clock sysvar.
+///     // Next account might be the System program.
 ///     let (index, account) = try_next_enumerated_optional_account_info(
 ///         &mut accounts_iter,
 ///         &program_id,
 ///         AccountInfoConstraints {
-///             key: Some(&solana_program::sysvar::clock::ID),
+///             key: Some(&sealevel_tools::account::system::ID),
 ///             ..Default::default()
 ///         })?;
 ///
@@ -512,6 +512,8 @@ fn _process_enumerated_account_info(
         if &account_data[offset..end] != data {
             #[cfg(feature = "alloc")]
             {
+                use base64::{prelude::BASE64_STANDARD, Engine};
+
                 return Err(SealevelToolsError::AccountInfo(&[
                     format!(
                         "Account index {}: Data slice mismatch at offset {}...",
@@ -520,10 +522,10 @@ fn _process_enumerated_account_info(
                     .as_str(),
                     format!(
                         "  Found: {}",
-                        bs58::encode(&account_data[offset..offset + data.len()]).into_string()
+                        BASE64_STANDARD.encode(&account_data[offset..offset + data.len()])
                     )
                     .as_str(),
-                    format!("  Expected: {}", bs58::encode(data).into_string()).as_str(),
+                    format!("  Expected: {}", BASE64_STANDARD.encode(data)).as_str(),
                 ])
                 .into());
             }

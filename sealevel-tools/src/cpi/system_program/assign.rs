@@ -1,4 +1,5 @@
 use crate::{
+    account::system::ID,
     cpi::{CpiAuthority, CpiInstruction},
     pubkey::Pubkey,
 };
@@ -26,7 +27,7 @@ pub(super) fn _invoke_assign(to: &CpiAuthority, owner: &Pubkey) {
     let instruction_data = _serialize_instruction_data(owner);
 
     CpiInstruction {
-        program_id: &super::ID,
+        program_id: &ID,
         accounts: &[to.to_meta_c_signer()],
         data: &instruction_data,
     }
@@ -51,7 +52,7 @@ fn _serialize_instruction_data(owner: &Pubkey) -> [u8; IX_DATA_LEN] {
 
 #[cfg(test)]
 mod test {
-    use solana_program::system_instruction::SystemInstruction;
+    use solana_sdk::system_instruction::SystemInstruction;
 
     use super::*;
 

@@ -17,7 +17,7 @@ use crate::{
 
 #[inline(always)]
 pub fn init_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -37,7 +37,7 @@ pub fn init_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
 
     let thing = BorshAccountSchema(Thing { value });
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     CreateAccount {
         payer: payer.as_cpi_authority(),
@@ -48,14 +48,14 @@ pub fn init_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
     }
     .try_invoke_and_serialize(&thing)?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn update_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -66,19 +66,19 @@ pub fn update_thing(accounts: &[NoStdAccountInfo], value: u64) -> ProgramResult 
         OWNED_BY_THIS_PROGRAM,
     )?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     thing_account.data.value = value;
     thing_account.try_write_data()?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }
 
 #[inline(always)]
 pub fn close_thing(accounts: &[NoStdAccountInfo]) -> ProgramResult {
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     let mut accounts_iter = accounts.iter().enumerate();
 
@@ -99,11 +99,11 @@ pub fn close_thing(accounts: &[NoStdAccountInfo]) -> ProgramResult {
     let (_, beneficiary) =
         try_next_enumerated_account::<WritableAccount>(&mut accounts_iter, Default::default())?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     thing_account.try_close(&beneficiary)?;
 
-    // solana_program::log::sol_log_compute_units();
+    // sealevel_tools::log::sol_log_compute_units();
 
     Ok(())
 }

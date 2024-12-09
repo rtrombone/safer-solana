@@ -1,15 +1,14 @@
 use alloc::vec::Vec;
 
-use crate::{
-    entrypoint::{AccountInfoC, AccountMetaC, NoStdAccountInfo, ProgramResult},
-    instruction::Instruction,
-};
+use solana_instruction::Instruction;
+
+use crate::entrypoint::{AccountInfoC, AccountMetaC, NoStdAccountInfo, ProgramResult};
 
 use super::{try_check_borrow_account_info, CpiInstruction};
 
-/// Similar to [invoke_signed](solana_program::program::invoke_signed). This method performs
-/// [invoke_signed_c] under the hood for a given [Instruction]. This method is useful for SDKs that
-/// generate [Instruction] structs.
+/// Similar to [invoke_signed](solana_cpi::invoke_signed). This method performs [invoke_signed_c]
+/// under the hood for a given [Instruction]. This method is useful for SDKs that generate
+/// [Instruction] structs.
 ///
 /// ### Notes
 ///
@@ -45,7 +44,7 @@ pub fn invoke_signed(
     .invoke_signed(infos, signers_seeds);
 }
 
-/// Similar to [invoke_signed](solana_program::program::invoke_signed), but performs
+/// Similar to [invoke_signed](solana_cpi::invoke_signed), but performs
 /// [try_check_borrow_account_info] before calling [invoke_signed].
 ///
 /// ### Notes

@@ -10,16 +10,22 @@ pub use borsh::*;
 #[cfg(feature = "token")]
 pub use token::*;
 
+pub mod system {
+    crate::declare_id!("11111111111111111111111111111111");
+}
+
+pub mod bpf_loader_upgradeable {
+    crate::declare_id!("BPFLoaderUpgradeab1e11111111111111111111111");
+}
+
 use core::ops::{Deref, DerefMut};
 
 #[cfg(feature = "alloc")]
 use core::borrow::Borrow;
 
-use crate::{
-    discriminator::Discriminate,
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack},
-};
+use solana_program_pack::{IsInitialized, Pack};
+
+use crate::{discriminator::Discriminate, program_error::ProgramError};
 
 /// Trait used to define a serializable account schema, which includes a discriminator. If the
 /// account does not have a discriminator, use DISC_LEN == 0.
@@ -94,7 +100,7 @@ pub trait AccountSerde<const DISC_LEN: usize>: Sized + Discriminate<DISC_LEN> {
         let _: [u8; DISC_LEN] = match data[..DISC_LEN].try_into() {
             Ok(discriminator) if discriminator == Self::DISCRIMINATOR => discriminator,
             _ => {
-                solana_program::log::sol_log("Invalid account discriminator");
+                crate::log::sol_log("Invalid account discriminator");
                 return Err(ProgramError::InvalidAccountData);
             }
         };
